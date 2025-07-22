@@ -1,39 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Quotient and Remainder Calculator</title>
+  <title>Remainder Calculator</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
     }
     input, button {
-      margin: 8px 0;
+      margin: 5px;
       padding: 8px;
-    }
-    label {
-      display: block;
-      margin-top: 10px;
     }
   </style>
 </head>
 <body>
 
-  <h2>Quotient and Remainder Calculator</h2>
+  <h2>Remainder Calculator</h2>
 
-  <label for="dividend">Dividend:</label>
-  <input type="number" id="dividend" placeholder="Enter dividend" />
+  <label>Dividend:</label>
+  <input type="number" id="dividend" placeholder="Enter dividend" /><br>
 
-  <label for="divisor">Divisor:</label>
-  <input type="number" id="divisor" placeholder="Enter divisor" />
+  <label>Divisor:</label>
+  <input type="number" id="divisor" placeholder="Enter divisor" /><br>
 
-  <br>
-  <button onclick="calculate()">Calculate</button>
+  <button onclick="calculateRemainder()">Get Remainder</button>
 
   <h3 id="result"></h3>
 
   <script>
-    function calculate() {
+    function calculateRemainder() {
       const dividend = parseInt(document.getElementById('dividend').value);
       const divisor = parseInt(document.getElementById('divisor').value);
       const resultElement = document.getElementById('result');
@@ -48,10 +43,8 @@
         return;
       }
 
-      const quotient = Math.floor(dividend / divisor);
       const remainder = dividend % divisor;
-
-      resultElement.textContent = `Quotient: ${quotient}, Remainder: ${remainder}`;
+      resultElement.textContent = `Remainder: ${remainder}`;
     }
   </script>
 
