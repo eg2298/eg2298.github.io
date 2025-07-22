@@ -1,49 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Division Calculator + Random Number Generator</title>
-</head>
-<body>
-
-  <!-- Division Calculator -->
-  <h2>Division Calculator</h2>
-  <input type="number" id="num1" placeholder="Enter Dividend">
-  <input type="number" id="num2" placeholder="Enter Divisor">
-  <button onclick="calculate()">Divide</button>
-  <div id="divisionResult"></div>
-
-  <!-- Random Number Generator -->
-  <h2>Random Number Generator</h2>
-  <button onclick="generateRandomNumber()">Get Random Number</button>
-  <div id="randomOutput"></div>
-
-  <script>
-    // Division calculator function
-    function calculate() {
-      const a = parseInt(document.getElementById("num1").value);
-      const b = parseInt(document.getElementById("num2").value);
-
-      if (isNaN(a) || isNaN(b) || b === 0) {
-        document.getElementById("divisionResult").textContent = "Please enter valid numbers and divisor ≠ 0";
-        return;
-      }
-
-      const quotient = Math.floor(a / b);
-      const remainder = a % b;
-
-      document.getElementById("divisionResult").textContent = 
-        `Quotient: ${quotient}, Remainder: ${remainder}`;
-    }
-
-    // Random number generator function
-    function generateRandomNumber() {
-      const min = 1;
-      const max = 10000;
-      const rand = Math.floor(Math.random() * (max - min + 1)) + min;
-      document.getElementById("randomOutput").textContent = "Random Number: " + rand;
-    }
-  </script>
-
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite App</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>
