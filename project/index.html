@@ -1,13 +1,130 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite App</title>
-  </head>
-  <body>
-    <a href="volume.html">Voxel Viewer</a>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Name - Personal Webpage</title>
+    <link rel="stylesheet" href="style.css"> <link rel="icon" href="favicon.ico" type="image/x-icon"> </head>
+<body>
+
+    <header>
+        <div class="container">
+            <h1><a href="#home">Ethan</a></h1>
+            <nav>
+                <ul>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#skills">Skills</a></li>
+                    <li><a href="#portfolio">Portfolio</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+ <a href="volume.html">Voxel Viewer</a>
     <a href="double_pendulum.html">Double Pendulum</a>
-  </body>
+
+    <section id="home" class="hero">
+        <div class="container">
+            <img src="profile.jpg" alt="Your Profile Picture" class="profile-pic">
+            <h2>Hello, I'm Ethan!</h2>
+            <p class="tagline">A brief, catchy tagline about what you do (e.g., "Web Developer & Designer")</p>
+            <a href="#contact" class="btn">Get In Touch</a>
+        </div>
+    </section>
+
+    <section id="about" class="about-section">
+        <div class="container">
+            <h2>About Me</h2>
+            <p>
+                Welcome to my personal corner of the internet! I'm [Your Name], and I'm passionate about [Your Passion/Field, e.g., creating engaging web experiences].
+                I specialize in [Your Main Skill/Area, e.g., front-end development] and have experience with [Mention a few key technologies or areas, e.g., HTML, CSS, JavaScript, React].
+                My goal is to [Your Professional Goal, e.g., build intuitive and impactful digital solutions].
+                When I'm not coding, you can find me [Your Hobby/Interest, e.g., hiking, reading, playing music].
+            </p>
+        </div>
+    </section>
+
+    <section id="skills" class="skills-section">
+        <div class="container">
+            <h2>My Skills</h2>
+            <div class="skills-grid">
+                <div class="skill-item">
+                    <h3>Programming Languages</h3>
+                    <ul>
+                        <li>JavaScript</li>
+                        <li>Python</li>
+                        <li>HTML5</li>
+                        <li>CSS3</li>
+                        </ul>
+                </div>
+                <div class="skill-item">
+                    <h3>Frameworks & Libraries</h3>
+                    <ul>
+                        <li>React</li>
+                        <li>Vue.js</li>
+                        <li>Node.js</li>
+                        <li>Bootstrap</li>
+                        </ul>
+                </div>
+                <div class="skill-item">
+                    <h3>Tools & Technologies</h3>
+                    <ul>
+                        <li>Git & GitHub</li>
+                        <li>VS Code</li>
+                        <li>Figma</li>
+                        <li>Docker</li>
+                        </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="portfolio" class="portfolio-section">
+        <div class="container">
+            <h2>My Work</h2>
+            <div class="portfolio-grid">
+                <div class="project-card">
+                    <img src="img/green_cube.png" alt="Project 1 Thumbnail">
+                    <h3>Rotating Cube</h3>
+                    <p>A Green Rotating Cube</p>
+                    <a href="link-to-project1-demo.com" target="_blank" class="project-link">View Project</a>
+                    <a href="link-to-project1-repo.com" target="_blank" class="project-link">GitHub Repo</a>
+                </div>
+                <div class="project-card">
+                    <img src="project2.jpg" alt="Project 2 Thumbnail">
+                    <h3>Double Pendulum</h3>
+                    <p>A brief description of Project 2, highlighting its purpose or key features.</p>
+                    <a href="link-to-project2-demo.com" target="_blank" class="project-link">View Project</a>
+                    <a href="link-to-project2-repo.com" target="_blank" class="project-link">GitHub Repo</a>
+                </div>
+                </div>
+        </div>
+    </section>
+
+    <section id="contact" class="contact-section">
+        <div class="container">
+            <h2>Get In Touch</h2>
+            <p>I'm always open to new opportunities and collaborations. Feel free to reach out!</p>
+            <form action="your-form-submission-endpoint.php" method="POST">
+                <input type="text" name="name" placeholder="Your Name" required>
+                <input type="email" name="email" placeholder="Your Email" required>
+                <textarea name="message" placeholder="Your Message" rows="6" required></textarea>
+                <button type="submit" class="btn">Send Message</button>
+            </form>
+            <div class="social-links">
+                <a href="https://linkedin.com/in/yourprofile" target="_blank">LinkedIn</a>
+                <a href="https://github.com/eg2298" target="_blank">GitHub</a>
+                <a href="https://twitter.com/yourusername" target="_blank">Twitter</a>
+                </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Your Name. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script> </body>
 </html>
+   
