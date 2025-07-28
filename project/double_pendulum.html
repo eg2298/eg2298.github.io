@@ -10,8 +10,22 @@
   <body>
     Double Pendulum
     <div id="app"></div>
+    <div id="controls">
+  <label>
+    Mass 1 Velocity:
+    <input type="number" id="vel1-input" value="0.5" step="0.1">
+  </label>
+
+  <label style="margin-left: 10px;">
+    Mass 2 Velocity:
+    <input type="number" id="vel2-input" value="2.5" step="0.1">
+  </label>
+
+  <button id="apply-velocities">Apply Velocities</button>
+</div>
+<button id="reset-btn">Reset</button>
+<canvas id="three-canvas"></canvas>
     
-     <canvas id="three-canvas"></canvas>
-    
+
    </body>
 </html>
