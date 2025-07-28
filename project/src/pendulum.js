@@ -144,7 +144,7 @@ function animate() {
 
 
 
-// ✅ Add damping to simulate friction/air resistance
+// Add damping to simulate friction/air resistance
 
  vel1 *= 0.999999;
 
@@ -152,7 +152,7 @@ function animate() {
 
 
 
-// ✅ Optional: Clamp the maximum velocity to prevent explosion
+// Optional: Clamp the maximum velocity to prevent explosion
 
  const maxVel = 5;
 
@@ -162,7 +162,7 @@ function animate() {
 
 
 
-// ✅ Then update the angles
+// Then update the angles
 
  angle1 += vel1 * dt;
 
