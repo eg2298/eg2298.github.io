@@ -19,8 +19,6 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // For high-DPI screens
 document.body.appendChild(renderer.domElement); // Add the canvas to the HTML body
 
-
-
 // 4. Create a geometry (shape)
 const geometry = new THREE.BoxGeometry(1, 1, 1); // A 1x1x1 unit cube
 
@@ -32,9 +30,6 @@ const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: false
 // 6. Create a mesh (geometry + material)
 const cube = new THREE.Mesh(geometry, material);
 scene.add(cube); // Add the cube to the scene
-
-
-
 
 // 7. Add Lights (if using MeshStandardMaterial or other light-reactive materials)
 // const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
