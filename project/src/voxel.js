@@ -1,70 +1,102 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'; // For camera controls
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-// 1. Scene setup
+// 1. Scenes
 const scene = new THREE.Scene();
+const screenScene = new THREE.Scene(); // For full-screen quad
+const screenCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); // 2D quad
 
-// 2. Camera setup
+// 2. Perspective camera
 const camera = new THREE.PerspectiveCamera(
-    75, // field of view
-    window.innerWidth / window.innerHeight, // aspect ratio
-    0.1, // near clipping plane
-    1000 // far clipping plane
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
 );
-camera.position.z = 5; // Move camera back to see the cube
+camera.position.z = 5;
 
-// 3. Renderer setup
-const renderer = new THREE.WebGLRenderer({ antialias: true }); // antialias for smoother edges
+// 3. Renderer
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // For high-DPI screens
-document.body.appendChild(renderer.domElement); // Add the canvas to the HTML body
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x222222); // Optional for debug
+document.body.appendChild(renderer.domElement);
 
-// 4. Create a geometry (shape)
-const geometry = new THREE.BoxGeometry(1, 1, 1); // A 1x1x1 unit cube
-
-// 5. Create a material (how the surface looks)
-const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: false }); // Green, not wireframe
-// For more realistic lighting, you'd use MeshStandardMaterial and add lights:
-// const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-
-// 6. Create a mesh (geometry + material)
+// 4. Cube
+const geometry = new THREE.BoxGeometry(1, 1, 1);
+const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
 const cube = new THREE.Mesh(geometry, material);
-scene.add(cube); // Add the cube to the scene
+scene.add(cube);
 
-// 7. Add Lights (if using MeshStandardMaterial or other light-reactive materials)
-// const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
-// scene.add(ambientLight);
-// const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-// directionalLight.position.set(1, 1, 1);
-// scene.add(directionalLight);
+// 5. Fullscreen quad
+const quadGeometry = new THREE.PlaneGeometry(2, 2);
 
-// 8. Add OrbitControls (optional, for rotating camera with mouse)
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true; // Smooth out camera movement
-controls.dampingFactor = 0.05;
+// ✅ Fallback shader (color gradient)
+const raymarchMaterial = new THREE.ShaderMaterial({
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    precision highp float;
+    varying vec2 vUv;
 
-// 9. Handle window resizing
-window.addEventListener('resize', () => {
-    // Update camera aspect ratio
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+    void main() {
+  vec3 color1 = vec3(1.0, 0.5, 0.2); // Orange
+  vec3 color2 = vec3(0.5, 0.0, 0.8); // Purple
+  float t = (vUv.x + vUv.y) * 0.5;
+  vec3 col = mix(color1, color2, t);
+  gl_FragColor = vec4(col, 1.0);
+}
 
-    // Update renderer size
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  `,
+  depthWrite: false,
+  depthTest: false,
+  transparent: true
 });
 
-// 10. Animation Loop
+const quad = new THREE.Mesh(quadGeometry, raymarchMaterial);
+quad.renderOrder = -1; // Ensures it's drawn before cube
+screenScene.add(quad);
+
+// 6. Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+
+// 7. Resize handling
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+});
+
+// 8. Animate
+const clock = new THREE.Clock();
+
 const animate = () => {
-    requestAnimationFrame(animate); // Call animate on the next frame
+  requestAnimationFrame(animate);
 
-    // Update cube rotation (example animation)
-    cube.rotation.x += 0.01;
-    cube.rotation.y += 0.01;
+  const elapsedTime = clock.getElapsedTime();
 
-    controls.update(); // Only required if controls.enableDamping or autoRotate are set to true
+  cube.rotation.x += 0.01;
+  cube.rotation.y += 0.01;
 
-    renderer.render(scene, camera); // Render the scene
+  controls.update();
+
+  // ✅ Render raymarched quad first (background)
+  renderer.autoClear = true;
+  renderer.clear();
+  renderer.render(screenScene, screenCamera);
+
+  // ✅ Render cube scene on top
+  renderer.autoClear = false;
+  renderer.render(scene, camera);
 };
 
-animate(); // Start the animation loop
+animate();
