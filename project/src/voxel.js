@@ -1,6 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+
+let rotationSpeed = 0.01;
+const speedSlider = document.getElementById('speedSlider');
+speedSlider.addEventListener('input', () => {
+  rotationSpeed = parseFloat(speedSlider.value);
+});
+
+
 // 1. Scenes
 const scene = new THREE.Scene();
 const screenScene = new THREE.Scene(); // For full-screen quad
@@ -84,8 +92,9 @@ const animate = () => {
 
   const elapsedTime = clock.getElapsedTime();
 
-  cube.rotation.x += 0.01;
-  cube.rotation.y += 0.01;
+  cube.rotation.x += rotationSpeed;
+  cube.rotation.y += rotationSpeed;
+
 
   controls.update();
 
