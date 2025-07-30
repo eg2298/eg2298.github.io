@@ -22,9 +22,9 @@ let acc2 = 0;
 
 const g = 9.8; // gravity m/s^2
 
-const m1 = 1; //kg
+let m1 = 1; //kg
 
-const m2 = 1;
+let m2 = 1;
 
 const l1 = 1; //m
 
@@ -50,6 +50,15 @@ document.getElementById('apply-velocities').addEventListener('click', () => {
 
   if (!isNaN(v1)) vel1 = v1;
   if (!isNaN(v2)) vel2 = v2;
+
+document.getElementById('mass1').addEventListener('input', (e) => {
+  m1 = parseFloat(e.target.value);
+});
+
+document.getElementById('mass2').addEventListener('input', (e) => {
+  m2 = parseFloat(e.target.value);
+});
+
 
 });
 
