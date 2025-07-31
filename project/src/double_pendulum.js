@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-
-let scene, camera, renderer, controls; // Added controls
+let scene, camera, renderer, controls; // Added controls for camera interaction
 let arm1, arm2;
 let material1, material2;
 
@@ -21,10 +20,13 @@ const l2 = 1;
 
 let trailPoints = [];
 let trailLine;
-const maxTrailPoints = 200; // trail length - using your specified length
+const maxTrailPoints = 750; // Increased trail length for better visibility (was 200 in your prompt)
 const trailUpdateInterval = 1; // Update trail every frame for smoother look
 
+let frameCount = 0; // To control when the trail updates (if using interval)
+
 // UI: Reset Button
+// Make sure this button exists in your HTML with id="reset-btn"
 document.getElementById('reset-btn').addEventListener('click', () => {
     angle1 = Math.PI / 2;
     angle2 = Math.PI / 4;
@@ -32,15 +34,19 @@ document.getElementById('reset-btn').addEventListener('click', () => {
     vel2 = 2.5;
     acc1 = 0;
     acc2 = 0;
-    trailPoints = [];
-    // This line (setFromPoints) was the source of the previous trail bug.
-    // It re-creates the geometry but doesn't update the reference.
-    // If trail doesn't show, you'll need to revert to the direct attribute update method.
-    trailLine.geometry.setFromPoints(trailPoints);
-    trailLine.geometry.attributes.position.needsUpdate = true; // Still needed, but on the old geometry
+    trailPoints = []; // Clear the stored points
+
+    // --- CORRECTED RESET LOGIC FOR TRAIL ---
+    // Instead of setFromPoints, directly manipulate the BufferAttribute
+    if (trailLine && trailLine.geometry && trailLine.geometry.attributes.position) {
+        trailLine.geometry.attributes.position.array.fill(0); // Fill the buffer with zeros
+        trailLine.geometry.attributes.position.needsUpdate = true; // Tell Three.js to update the GPU buffer
+        trailLine.geometry.setDrawRange(0, 0); // Set draw range to 0 to hide the line
+    }
 });
 
 // UI: Set velocities
+// Make sure these inputs and button exist in your HTML
 document.getElementById('apply-velocities').addEventListener('click', () => {
     const v1 = parseFloat(document.getElementById('vel1-input').value);
     const v2 = parseFloat(document.getElementById('vel2-input').value);
@@ -49,6 +55,7 @@ document.getElementById('apply-velocities').addEventListener('click', () => {
 });
 
 // UI: Mass sliders
+// Make sure these inputs and spans exist in your HTML
 const mass1Slider = document.getElementById('mass1');
 const mass2Slider = document.getElementById('mass2');
 const mass1ValueSpan = document.getElementById('mass1-value');
@@ -67,7 +74,6 @@ if (mass2Slider) {
     });
 }
 
-
 init();
 animate();
 
@@ -78,11 +84,12 @@ function init() {
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
     camera.position.set(0, 0, 5); // Position camera to view the pendulum from a distance
 
+    // Make sure your HTML has a <canvas id="three-canvas"></canvas>
     renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
 
-    // Add OrbitControls
+    // Add OrbitControls for camera interaction
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; // Enable smooth camera movement
     controls.dampingFactor = 0.05;
@@ -108,7 +115,7 @@ function init() {
     geom2.translate(0, -l2 / 2, 0);
     arm2 = new THREE.Mesh(geom2, material2);
     // arm2 is added as a child of arm1 -- THIS IS THE KEY CHANGE FOR HIERARCHY
-    arm1.add(arm2);
+    arm1.add(arm2); // Connect arm2 to arm1
 
     // --- Position arm2 relative to arm1 ---
     // arm2's pivot point (its local origin) should be at the end of arm1.
@@ -116,9 +123,11 @@ function init() {
     // the end of arm1 is at (0, -l1, 0) in arm1's local coordinate system.
     arm2.position.set(0, -l1, 0); // Position arm2's pivot at the end of arm1
 
-    // Trail setup
-    // Using setFromPoints([]) for initial empty state as per your format.
-    const trailGeometry = new THREE.BufferGeometry().setFromPoints([]);
+    // --- TRAIL SETUP (CORRECTED) ---
+    const trailGeometry = new THREE.BufferGeometry();
+    // Pre-allocate buffer for maxTrailPoints * 3 (x, y, z) floats
+    // This creates the Float32Array once and attaches it.
+    trailGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(maxTrailPoints * 3), 3));
     const trailMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 }); // Red trail, increased linewidth
     trailLine = new THREE.Line(trailGeometry, trailMaterial);
     scene.add(trailLine);
@@ -127,6 +136,7 @@ function init() {
     window.addEventListener('resize', onWindowResize);
 
     // Initialize mass slider values on load
+    // These checks prevent errors if the elements aren't found immediately
     if (mass1ValueSpan) mass1ValueSpan.textContent = `${mass1Slider.value} kg`;
     if (mass2ValueSpan) mass2ValueSpan.textContent = `${mass2Slider.value} kg`;
 }
@@ -134,7 +144,7 @@ function init() {
 function animate() {
     requestAnimationFrame(animate);
 
-    // Physics calculations
+    // Physics calculations (no changes here, same as your original)
     const num1 = -g * (2 * m1 + m2) * Math.sin(angle1);
     const num2 = -m2 * g * Math.sin(angle1 - 2 * angle2);
     const num3 = -2 * Math.sin(angle1 - angle2) * m2;
@@ -165,29 +175,44 @@ function animate() {
 
     // --- Update arm positions and rotations ---
     arm1.rotation.z = angle1;
-    arm2.rotation.z = angle2 - angle1; // Relative rotation
+    arm2.rotation.z = angle2 - angle1; // Relative rotation for connected arm
 
     // Update color based on screen Y position
     updateColor(arm1, material1);
     updateColor(arm2, material2);
 
-    // Add current tip position to trail
-    const tipLocal = new THREE.Vector3(0, -l2, 0); // Tip of arm2 in its local space
-    const tipWorld = arm2.localToWorld(tipLocal.clone());
-    trailPoints.push(tipWorld.clone());
+    // --- TRAIL UPDATE LOGIC (CORRECTED) ---
+    frameCount++;
+    if (frameCount % trailUpdateInterval === 0) { // Only update trail every X frames (or every frame if interval is 1)
+        // Get the world position of the tip of the second pendulum arm
+        const tipLocal = new THREE.Vector3(0, -l2, 0); // Tip of arm2 in its local space (due to geometry translation)
+        const tipWorld = arm2.localToWorld(tipLocal.clone()); // Convert to world coordinates
 
-    if (trailPoints.length > maxTrailPoints) {
-        trailPoints.shift();
+        trailPoints.push(tipWorld.clone()); // Add the new point
+
+        if (trailPoints.length > maxTrailPoints) {
+            trailPoints.shift(); // Remove the oldest point if trail is too long
+        }
+
+        // Get the position attribute of the trail geometry
+        const positionsAttribute = trailLine.geometry.attributes.position;
+        const positionsArray = positionsAttribute.array;
+
+        // Copy the current trailPoints into the Float32Array buffer
+        for (let i = 0; i < trailPoints.length; i++) {
+            positionsArray[i * 3] = trailPoints[i].x;
+            positionsArray[i * 3 + 1] = trailPoints[i].y;
+            positionsArray[i * 3 + 2] = trailPoints[i].z;
+        }
+
+        // Tell Three.js that the buffer data has changed and needs to be re-uploaded to the GPU
+        positionsAttribute.needsUpdate = true;
+        // Set the draw range to only draw the actual number of points currently in the array
+        trailLine.geometry.setDrawRange(0, trailPoints.length);
     }
+    // --- End Trail Update Logic ---
 
-    // --- IMPORTANT: This specific trail update method might not show the trail correctly. ---
-    // The `setFromPoints` method creates a new internal geometry.
-    // If you don't see the trail, refer to the previous version of the code
-    // where the `position` attribute of the existing geometry was directly updated.
-    trailLine.geometry.setFromPoints(trailPoints);
-    trailLine.geometry.attributes.position.needsUpdate = true;
-
-    controls.update(); // Update controls
+    controls.update(); // Update OrbitControls for camera movement
     renderer.render(scene, camera);
 }
 
@@ -201,3 +226,16 @@ function updateColor(mesh, material) {
     const color = new THREE.Color().setHSL((yScreen * frequency) % 1, 0.65, 0.5); // Adjusted lightness for better visibility
     material.color.copy(color);
 }
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// Ensure initial mass slider values are displayed
+// This runs once the window (and thus the HTML elements) are loaded
+window.onload = function() {
+    if (mass1ValueSpan) mass1ValueSpan.textContent = `${mass1Slider.value} kg`;
+    if (mass2ValueSpan) mass2ValueSpan.textContent = `${mass2Slider.value} kg`;
+};
