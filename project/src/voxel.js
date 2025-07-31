@@ -1,203 +1,96 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-
-let scene, camera, renderer, controls; // Added controls
-let arm1, arm2;
-let material1, material2;
-
-let angle1 = Math.PI / 2;
-let angle2 = Math.PI / 4;
-let vel1 = 0.5;
-let vel2 = 2.5;
-let acc1 = 0;
-let acc2 = 0;
-
-const g = 9.8;
-let m1 = 1;
-let m2 = 1;
-const l1 = 1;
-const l2 = 1;
-
-let trailPoints = [];
-let trailLine;
-const maxTrailPoints = 200; // trail length - using your specified length
-const trailUpdateInterval = 1; // Update trail every frame for smoother look
-
-// UI: Reset Button
-document.getElementById('reset-btn').addEventListener('click', () => {
-    angle1 = Math.PI / 2;
-    angle2 = Math.PI / 4;
-    vel1 = 0.5;
-    vel2 = 2.5;
-    acc1 = 0;
-    acc2 = 0;
-    trailPoints = [];
-    // This line (setFromPoints) was the source of the previous trail bug.
-    // It re-creates the geometry but doesn't update the reference.
-    // If trail doesn't show, you'll need to revert to the direct attribute update method.
-    trailLine.geometry.setFromPoints(trailPoints);
-    trailLine.geometry.attributes.position.needsUpdate = true; // Still needed, but on the old geometry
+let rotationSpeed = 0.01;
+const speedSlider = document.getElementById('speedSlider');
+speedSlider.addEventListener('input', () => {
+  rotationSpeed = parseFloat(speedSlider.value);
 });
 
-// UI: Set velocities
-document.getElementById('apply-velocities').addEventListener('click', () => {
-    const v1 = parseFloat(document.getElementById('vel1-input').value);
-    const v2 = parseFloat(document.getElementById('vel2-input').value);
-    if (!isNaN(v1)) vel1 = v1;
-    if (!isNaN(v2)) vel2 = v2;
-});
+// 1. Main scene and camera
+const scene = new THREE.Scene();
+const screenScene = new THREE.Scene(); // for full-screen background
+const screenCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-// UI: Mass sliders
-const mass1Slider = document.getElementById('mass1');
-const mass2Slider = document.getElementById('mass2');
-const mass1ValueSpan = document.getElementById('mass1-value');
-const mass2ValueSpan = document.getElementById('mass2-value');
+// 2. Perspective camera
+const camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+camera.position.z = 5;
 
-if (mass1Slider) { // Check if elements exist before adding listeners
-    mass1Slider.addEventListener('input', (e) => {
-        m1 = parseFloat(e.target.value);
-        if (mass1ValueSpan) mass1ValueSpan.textContent = `${m1} kg`;
-    });
-}
-if (mass2Slider) {
-    mass2Slider.addEventListener('input', (e) => {
-        m2 = parseFloat(e.target.value);
-        if (mass2ValueSpan) mass2ValueSpan.textContent = `${m2} kg`;
-    });
-}
+// 3. Renderer
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
 
+// 4. Cube
+const geometry = new THREE.BoxGeometry(1, 1, 1);
+const material = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // yellow
+const cube = new THREE.Mesh(geometry, material);
+scene.add(cube);
 
-init();
-animate();
-
-function init() {
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1a1a2e); // Dark background for better trail visibility
-
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 0, 5); // Position camera to view the pendulum from a distance
-
-    renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-
-    // Add OrbitControls
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; // Enable smooth camera movement
-    controls.dampingFactor = 0.05;
-    controls.screenSpacePanning = false; // Prevents panning beyond limits
-    controls.maxPolarAngle = Math.PI / 2; // Restrict vertical rotation
-
-    material1 = new THREE.MeshBasicMaterial({ color: 0x8be9fd }); // Cyan color
-    material2 = new THREE.MeshBasicMaterial({ color: 0xff79c6 }); // Pink color
-
-    // --- Pendulum Arm 1 Setup ---
-    const geom1 = new THREE.CylinderGeometry(0.05, 0.05, l1, 32);
-    // Translate geometry so the pivot point (0,0,0) is at the top of the arm
-    // and the arm extends downwards along the negative Y axis.
-    geom1.translate(0, -l1 / 2, 0);
-    arm1 = new THREE.Mesh(geom1, material1);
-    // arm1 is directly added to the scene, its pivot is at scene (0,0,0)
-    scene.add(arm1);
-
-    // --- Pendulum Arm 2 Setup ---
-    const geom2 = new THREE.CylinderGeometry(0.05, 0.05, l2, 32);
-    // Translate geometry so the pivot point (0,0,0) is at the top of the arm
-    // and the arm extends downwards along the negative Y axis.
-    geom2.translate(0, -l2 / 2, 0);
-    arm2 = new THREE.Mesh(geom2, material2);
-    // arm2 is added as a child of arm1 -- THIS IS THE KEY CHANGE FOR HIERARCHY
-    arm1.add(arm2);
-
-    // --- Position arm2 relative to arm1 ---
-    // arm2's pivot point (its local origin) should be at the end of arm1.
-    // Since arm1 extends downwards along its local -Y axis from its pivot at (0,0,0),
-    // the end of arm1 is at (0, -l1, 0) in arm1's local coordinate system.
-    arm2.position.set(0, -l1, 0); // Position arm2's pivot at the end of arm1
-
-    // Trail setup
-    // Using setFromPoints([]) for initial empty state as per your format.
-    const trailGeometry = new THREE.BufferGeometry().setFromPoints([]);
-    const trailMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 }); // Red trail, increased linewidth
-    trailLine = new THREE.Line(trailGeometry, trailMaterial);
-    scene.add(trailLine);
-
-    // Handle window resizing
-    window.addEventListener('resize', onWindowResize);
-
-    // Initialize mass slider values on load
-    if (mass1ValueSpan) mass1ValueSpan.textContent = `${mass1Slider.value} kg`;
-    if (mass2ValueSpan) mass2ValueSpan.textContent = `${mass2Slider.value} kg`;
-}
-
-function animate() {
-    requestAnimationFrame(animate);
-
-    // Physics calculations
-    const num1 = -g * (2 * m1 + m2) * Math.sin(angle1);
-    const num2 = -m2 * g * Math.sin(angle1 - 2 * angle2);
-    const num3 = -2 * Math.sin(angle1 - angle2) * m2;
-    const num4 = vel2 * vel2 * l2 + vel1 * vel1 * l1 * Math.cos(angle1 - angle2);
-    const den = l1 * (2 * m1 + m2 - m2 * Math.cos(2 * angle1 - 2 * angle2));
-    acc1 = (num1 + num2 + num3 * num4) / den;
-
-    const num5 = 2 * Math.sin(angle1 - angle2);
-    const num6 = vel1 * vel1 * l1 * (m1 + m2);
-    const num7 = g * (m1 + m2) * Math.cos(angle1);
-    const num8 = vel2 * vel2 * l2 * m2 * Math.cos(angle1 - angle2);
-    const den2 = l2 * (2 * m1 + m2 - m2 * Math.cos(2 * angle1 - 2 * angle2));
-    acc2 = (num5 * (num6 + num7 + num8)) / den2;
-
-    const dt = 0.0167;
-    vel1 += acc1 * dt;
-    vel2 += acc2 * dt;
-
-    vel1 *= 0.999999;
-    vel2 *= 0.999999;
-
-    const maxVel = 5;
-    vel1 = THREE.MathUtils.clamp(vel1, -maxVel, maxVel);
-    vel2 = THREE.MathUtils.clamp(vel2, -maxVel, maxVel);
-
-    angle1 += vel1 * dt;
-    angle2 += vel2 * dt;
-
-    // --- Update arm positions and rotations ---
-    arm1.rotation.z = angle1;
-    arm2.rotation.z = angle2 - angle1; // Relative rotation
-
-    // Update color based on screen Y position
-    updateColor(arm1, material1);
-    updateColor(arm2, material2);
-
-    // Add current tip position to trail
-    const tipLocal = new THREE.Vector3(0, -l2, 0); // Tip of arm2 in its local space
-    const tipWorld = arm2.localToWorld(tipLocal.clone());
-    trailPoints.push(tipWorld.clone());
-
-    if (trailPoints.length > maxTrailPoints) {
-        trailPoints.shift();
+// 5. Fullscreen quad with gradient background
+const quadGeometry = new THREE.PlaneGeometry(2, 2);
+const raymarchMaterial = new THREE.ShaderMaterial({
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position, 1.0);
     }
+  `,
+  fragmentShader: `
+    precision highp float;
+    varying vec2 vUv;
 
-    // --- IMPORTANT: This specific trail update method might not show the trail correctly. ---
-    // The `setFromPoints` method creates a new internal geometry.
-    // If you don't see the trail, refer to the previous version of the code
-    // where the `position` attribute of the existing geometry was directly updated.
-    trailLine.geometry.setFromPoints(trailPoints);
-    trailLine.geometry.attributes.position.needsUpdate = true;
+    void main() {
+      vec3 color1 = vec3(1.0, 0.5, 0.2); // orange
+      vec3 color2 = vec3(0.5, 0.0, 0.8); // purple
+      float t = (vUv.x + vUv.y) * 0.5;
+      vec3 col = mix(color1, color2, t);
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+  depthWrite: false,
+  depthTest: false,
+  transparent: true
+});
+const quad = new THREE.Mesh(quadGeometry, raymarchMaterial);
+quad.renderOrder = -1;
+screenScene.add(quad);
 
-    controls.update(); // Update controls
-    renderer.render(scene, camera);
+// 6. Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+
+// 7. Resize handler
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+});
+
+// 8. Animation loop
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+
+  cube.rotation.x += rotationSpeed;
+  cube.rotation.y += rotationSpeed;
+
+  controls.update();
+
+  renderer.autoClear = true;
+  renderer.clear();
+  renderer.render(screenScene, screenCamera); // background
+  renderer.autoClear = false;
+  renderer.render(scene, camera); // cube
 }
 
-function updateColor(mesh, material) {
-    const worldPosition = new THREE.Vector3();
-    mesh.getWorldPosition(worldPosition); // Get world position of the mesh
-
-    const screenPos = worldPosition.project(camera);
-    const yScreen = (screenPos.y + 1) / 2; // Normalize to [0,1]
-    const frequency = 4.0; // How fast colors cycle
-    const color = new THREE.Color().setHSL((yScreen * frequency) % 1, 0.65, 0.5); // Adjusted lightness for better visibility
-    material.color.copy(color);
-}
+animate();
