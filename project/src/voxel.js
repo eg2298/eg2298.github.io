@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-
+import { voxelFragmentShader } from "./voxel_fragment_shader.js";
+import { quadVertexShader } from "./quad_vertex_shader.js";
 
 let rotationSpeed = 0.01;
 const speedSlider = document.getElementById('speedSlider');
@@ -39,28 +40,10 @@ scene.add(cube);
 // 5. Fullscreen quad
 const quadGeometry = new THREE.PlaneGeometry(2, 2);
 
-// ✅ Fallback shader (color gradient)
+// Fallback shader (color gradient)
 const raymarchMaterial = new THREE.ShaderMaterial({
-  vertexShader: `
-    varying vec2 vUv;
-    void main() {
-      vUv = uv;
-      gl_Position = vec4(position, 1.0);
-    }
-  `,
-  fragmentShader: `
-    precision highp float;
-    varying vec2 vUv;
-
-    void main() {
-  vec3 color1 = vec3(1.0, 0.5, 0.2); // Orange
-  vec3 color2 = vec3(0.5, 0.0, 0.8); // Purple
-  float t = (vUv.x + vUv.y) * 0.5;
-  vec3 col = mix(color1, color2, t);
-  gl_FragColor = vec4(col, 1.0);
-}
-
-  `,
+  vertexShader: quadVertexShader,
+  fragmentShader: voxelFragmentShader,
   depthWrite: false,
   depthTest: false,
   transparent: true
