@@ -1,10 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-<<<<<<< HEAD
 import { voxelFragmentShader } from "./voxel_fragment_shader.js";
 import { quadVertexShader } from "./quad_vertex_shader.js";
-=======
->>>>>>> bd0090ddd7f0c40ce2dd1b24670341fa251d06a1
 
 let rotationSpeed = 0.01;
 const speedSlider = document.getElementById('speedSlider');
