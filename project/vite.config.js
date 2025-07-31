@@ -11,6 +11,7 @@ export default defineConfig({
         main:  'index.html', // Assuming your main HTML is index.html in the root
         voxel:'volume.html', // Path to page1.html
         pendulum: 'double_pendulum.html', // Path to page2.html
+         background: 'shader_background.html',
         // If your HTML files are in a 'pages' directory:
         // about: resolve(__dirname, 'pages/about.html'),
         // contact: resolve(__dirname, 'pages/contact.html'),
