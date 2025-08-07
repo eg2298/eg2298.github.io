@@ -98,11 +98,9 @@ function createStripes3DTexture(size = 32) {
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
         const index =  (x + y * size + z * size * size);
-
         // Create stripes pattern along x axis
         const stripeWidth = 4;
         const stripe = ((x % (2 * stripeWidth)) < stripeWidth) ? 255 : 0;
-
         data[index] = stripe;       // R
       }
     }
@@ -172,9 +170,6 @@ cloudMaterial = new THREE.RawShaderMaterial({
         base: { value: new THREE.Color(0x798aa0) },
         map: { value: stripesTexture },
         cameraPos: { value: new THREE.Vector3() },
-        threshold: { value: 0.25 },
-        opacity: { value: 0.25 },
-        range: { value: 0.1 },
         steps: { value: 100 },
         frame: { value: 0 }
     },

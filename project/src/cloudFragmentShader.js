@@ -12,10 +12,6 @@ export const cloudFragmentShader = /* glsl */`
 
 					uniform vec3 base;
 					uniform sampler3D map;
-
-					uniform float threshold;
-					uniform float range;
-					uniform float opacity;
 					uniform float steps;
 					uniform float frame;
 
@@ -36,15 +32,6 @@ export const cloudFragmentShader = /* glsl */`
 						return texture( map, p ).r;
 					}
 
-					float shading( vec3 coord ) {
-						float step = 0.01;
-						return sample1( coord + vec3( - step ) ) - sample1( coord + vec3( step ) );
-					}
-
-					vec4 linearToSRGB( in vec4 value ) {
-						return vec4( mix( pow( value.rgb, vec3( 0.41666 ) ) * 1.055 - vec3( 0.055 ), value.rgb * 12.92, vec3( lessThanEqual( value.rgb, vec3( 0.0031308 ) ) ) ), value.a );
-					}
-
 					void main(){
 						vec3 rayDir = normalize( vDirection );
 						vec2 bounds = hitBox( vOrigin, rayDir );
@@ -58,28 +45,20 @@ export const cloudFragmentShader = /* glsl */`
 						float delta = min( inc.x, min( inc.y, inc.z ) );
 						delta /= steps;
 
-						
-						vec4 ac = vec4( base, 0.0 );
-
 						for ( float t = bounds.x; t < bounds.y; t += delta ) {
 
 							float d = sample1( p + 0.5 );
 
-							d = smoothstep( threshold - range, threshold + range, d ) * opacity;
+							if(d>0.5){
 
-							float col = shading( p + 0.5 ) * 3.0 + ( ( p.x + p.y ) * 0.25 ) + 0.2;
+						color = vec4(t,t,t,1);
+							  break;
+							}
 
-							ac.rgb += ( 1.0 - ac.a ) * d * col;
-
-							ac.a += ( 1.0 - ac.a ) * d;
-
-							if ( ac.a >= 0.95 ) break;
 
 							p += rayDir * delta;
 
 						}
-
-						color = linearToSRGB( ac );
 
 						if ( color.a == 0.0 ) discard;
 
