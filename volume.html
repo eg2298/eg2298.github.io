@@ -1,21 +1,28 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Voxel Viewer</title>
-    <script type="module" crossorigin src="./voxel.js"></script>
-    <link rel="modulepreload" crossorigin href="./modulepreload-polyfill-.js">
-    <link rel="modulepreload" crossorigin href="./OrbitControls-.js">
-  </head>
-  <body>
 
-    <div id="app"></div>
-    Voxel Viewer
-    <div></div>
-    <label for="speedSlider">Rotation Speed:</label>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voxel Viewer</title>
+  <script type="module" crossorigin src="./voxel.js"></script>
+  <link rel="modulepreload" crossorigin href="./modulepreload-polyfill-.js">
+  <link rel="modulepreload" crossorigin href="./OrbitControls-.js">
+</head>
+
+<body>
+
+  <div id="app"></div>
+  Voxel Viewer
+  <div></div>
+  <div class="container">
+    <label for="binaryFileInput">Choose a file:</label>
+    <input type="file" id="binaryFileInput" accept=".vol, .raw">
+  </div>
+  <label for="speedSlider">Rotation Speed:</label>
   <input type="range" id="speedSlider" min="0" max="0.2" step="0.01" value="0.01">
   <button id="resetBtn">Reset</button>
-  </body>
+</body>
+
 </html>

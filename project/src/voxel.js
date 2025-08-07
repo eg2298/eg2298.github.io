@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-
+import { cloudVertexShader } from './cloudVertexShader.js';
+import { cloudFragmentShader } from './cloudFragmentShader.js';
+import {ParseVol} from "./ParseVol.js"
 // Vertex shader for fullscreen quad (simple pass-through)
 const quadVertexShader = `
   varying vec2 vUv;
@@ -58,37 +60,46 @@ const cubeFragmentShader = `
   }
 `;
 
+let voxelData;
+const LoadVol=(event)=>{
+  const file = event.target.files[0];
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const arrayBuffer = e.target.result;
+    voxelData = ParseVol(arrayBuffer);
+  };
+  // Read the file as an ArrayBuffer
+  reader.readAsArrayBuffer(file);
+}
+
+const fileInput = document.getElementById('binaryFileInput');
+fileInput.addEventListener('change', LoadVol);
+
 // Create 3D stripes texture programmatically (32x32x32)
 function createStripes3DTexture(size = 32) {
-  const data = new Uint8Array(size * size * size * 4); // RGBA
+  const data = new Uint8Array(size * size * size); // 1 byte per voxel
 
   for (let z = 0; z < size; z++) {
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
-        const index = 4 * (x + y * size + z * size * size);
+        const index =  (x + y * size + z * size * size);
 
         // Create stripes pattern along x axis
         const stripeWidth = 4;
         const stripe = ((x % (2 * stripeWidth)) < stripeWidth) ? 255 : 0;
 
         data[index] = stripe;       // R
-        data[index + 1] = 255 - stripe; // G (inverse)
-        data[index + 2] = 128;      // B (constant)
-        data[index + 3] = 255;      // A fully opaque
       }
     }
   }
 
   // Create Data3DTexture
   const texture = new THREE.Data3DTexture(data, size, size, size);
-  texture.format = THREE.RGBAFormat;
+  texture.format = THREE.RedFormat;
   texture.type = THREE.UnsignedByteType;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.unpackAlignment = 1;
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.wrapR = THREE.RepeatWrapping;
   texture.needsUpdate = true;
 
   return texture;
@@ -139,7 +150,26 @@ const cubeMaterial = new THREE.ShaderMaterial({
     stripesTexture: { value: stripesTexture }
   },
 });
-const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+
+const cloudMaterial = new THREE.RawShaderMaterial({
+    glslVersion: THREE.GLSL3,
+    uniforms: {
+        base: { value: new THREE.Color(0x798aa0) },
+        map: { value: stripesTexture },
+        cameraPos: { value: new THREE.Vector3() },
+        threshold: { value: 0.25 },
+        opacity: { value: 0.25 },
+        range: { value: 0.1 },
+        steps: { value: 100 },
+        frame: { value: 0 }
+    },
+    vertexShader: cloudVertexShader,
+    fragmentShader: cloudFragmentShader,
+    side: THREE.BackSide,
+    transparent: true
+});
+
+const cube = new THREE.Mesh(cubeGeometry, cloudMaterial);
 scene.add(cube);
 
 // Orbit controls
