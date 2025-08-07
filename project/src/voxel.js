@@ -61,12 +61,27 @@ const cubeFragmentShader = `
 `;
 
 let voxelData;
+let voxelTexture;
+let cloudMaterial;
+
 const LoadVol=(event)=>{
   const file = event.target.files[0];
   const reader = new FileReader();
   reader.onload = (e) => {
     const arrayBuffer = e.target.result;
     voxelData = ParseVol(arrayBuffer);
+    voxelTexture = new THREE.Data3DTexture(voxelData.voxels, voxelData.x, voxelData.y, voxelData.z);
+    voxelTexture.format = THREE.RedFormat;
+    voxelTexture.type = THREE.UnsignedByteType;
+    voxelTexture.minFilter = THREE.LinearFilter;
+    voxelTexture.magFilter = THREE.LinearFilter;
+    voxelTexture.unpackAlignment = 1;
+    voxelTexture.needsUpdate = true;
+    if(cloudMaterial){
+      cloudMaterial.uniforms.map.value = voxelTexture;
+      cloudMaterial.uniformsNeedUpdate=true;
+      cloudMaterial.needsUpdate = true;
+    }
   };
   // Read the file as an ArrayBuffer
   reader.readAsArrayBuffer(file);
@@ -151,7 +166,7 @@ const cubeMaterial = new THREE.ShaderMaterial({
   },
 });
 
-const cloudMaterial = new THREE.RawShaderMaterial({
+cloudMaterial = new THREE.RawShaderMaterial({
     glslVersion: THREE.GLSL3,
     uniforms: {
         base: { value: new THREE.Color(0x798aa0) },

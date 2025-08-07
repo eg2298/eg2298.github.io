@@ -32,7 +32,7 @@ export  function ParseVol(buffer) {
       const isVoxelSet = (byte & (1 << bitIndex)) !== 0;
 
       // Store the result as a 0 or 1 in the new Uint8Array
-      outputVoxels[voxelIndex] = isVoxelSet ? 1 : 0;
+      outputVoxels[voxelIndex] = isVoxelSet ? 200 : 0;
       voxelIndex++;
     }
   }
