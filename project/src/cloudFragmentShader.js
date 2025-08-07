@@ -2,18 +2,12 @@ export const cloudFragmentShader = /* glsl */`
 					precision highp float;
 					precision highp sampler3D;
 
-					uniform mat4 modelViewMatrix;
-					uniform mat4 projectionMatrix;
-
 					in vec3 vOrigin;
-					in vec3 vDirection;
-
+                    in vec3 vPosition;
 					out vec4 color;
 
-					uniform vec3 base;
 					uniform sampler3D map;
 					uniform float steps;
-					uniform float frame;
 
 					vec2 hitBox( vec3 orig, vec3 dir ) {
 						const vec3 box_min = vec3( - 0.5 );
@@ -33,7 +27,7 @@ export const cloudFragmentShader = /* glsl */`
 					}
 
 					void main(){
-						vec3 rayDir = normalize( vDirection );
+						vec3 rayDir = normalize( vPosition - vOrigin );
 						vec2 bounds = hitBox( vOrigin, rayDir );
 
 						if ( bounds.x > bounds.y ) discard;
@@ -46,16 +40,12 @@ export const cloudFragmentShader = /* glsl */`
 						delta /= steps;
 
 						for ( float t = bounds.x; t < bounds.y; t += delta ) {
-
-							float d = sample1( p + 0.5 );
-
+							float d = sample1( p + 0.5);
 							if(d>0.5){
-
-						color = vec4(t,t,t,1);
+							  float c = 1.0 - (t-bounds.x);
+						      color = vec4(c,c,c,1);
 							  break;
 							}
-
-
 							p += rayDir * delta;
 
 						}

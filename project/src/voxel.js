@@ -167,15 +167,12 @@ const cubeMaterial = new THREE.ShaderMaterial({
 cloudMaterial = new THREE.RawShaderMaterial({
     glslVersion: THREE.GLSL3,
     uniforms: {
-        base: { value: new THREE.Color(0x798aa0) },
         map: { value: stripesTexture },
         cameraPos: { value: new THREE.Vector3() },
-        steps: { value: 100 },
-        frame: { value: 0 }
+        steps: { value: 100 }
     },
     vertexShader: cloudVertexShader,
     fragmentShader: cloudFragmentShader,
-    side: THREE.BackSide,
     transparent: true
 });
 
@@ -223,10 +220,11 @@ window.addEventListener('resize', () => {
 function animate() {
   requestAnimationFrame(animate);
 
-  cube.rotation.x += rotationSpeed;
-  cube.rotation.y += rotationSpeed;
-
   controls.update();
+
+  const camPos = camera.position;
+  cloudMaterial.uniforms.cameraPos.value.set(camPos.x, camPos.y, camPos.z);
+  
 
   // Render background first
   renderer.autoClear = true;
