@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { cloudVertexShader } from './cloudVertexShader.js';
 import { cloudFragmentShader } from './cloudFragmentShader.js';
-import {ParseVol} from "./ParseVol.js"
-// Vertex shader for fullscreen quad (simple pass-through)
+import { ParseVol } from "./ParseVol.js";
+
+// Vertex shader for fullscreen quad
 const quadVertexShader = `
   varying vec2 vUv;
   void main() {
@@ -16,7 +17,6 @@ const quadVertexShader = `
 const gradientFragmentShader = `
   varying vec2 vUv;
   void main() {
-    // vertical gradient from dark blue to light blue
     vec3 topColor = vec3(0.1, 0.2, 0.5);
     vec3 bottomColor = vec3(0.0, 0.0, 0.1);
     vec3 color = mix(bottomColor, topColor, vUv.y);
@@ -24,89 +24,65 @@ const gradientFragmentShader = `
   }
 `;
 
-// Cube vertex shader (standard transform + pass UV and position)
-const cubeVertexShader = `
-  varying vec3 vPos;
-  varying vec3 vNormal;
-  void main() {
-    vPos = position;
-    vNormal = normalMatrix * normal;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-// Cube fragment shader with sampler3D stripes texture simulation
-const cubeFragmentShader = `
-  precision highp float;
-  varying vec3 vPos;
-  varying vec3 vNormal;
-
-  uniform sampler3D stripesTexture;
-
-  void main() {
-    // Transform position from [-0.5,0.5] to [0,1] for sampling 3D texture
-    vec3 texCoords = vPos + 0.5;
-
-    // Sample 3D texture stripes
-    vec4 stripeColor = texture(stripesTexture, texCoords);
-
-    // Simple lighting: diffuse based on normal and light direction
-    vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
-    float diff = max(dot(normalize(vNormal), lightDir), 0.0);
-
-    vec3 finalColor = stripeColor.rgb * diff;
-
-    gl_FragColor = vec4(finalColor, 1.0);
-  }
-`;
-
 let voxelData;
 let voxelTexture;
 let cloudMaterial;
+let cube; // moved here so LoadVol can access it
 
-const LoadVol=(event)=>{
+const LoadVol = (event) => {
   const file = event.target.files[0];
   const reader = new FileReader();
   reader.onload = (e) => {
     const arrayBuffer = e.target.result;
     voxelData = ParseVol(arrayBuffer);
-    voxelTexture = new THREE.Data3DTexture(voxelData.voxels, voxelData.x, voxelData.y, voxelData.z);
+
+    // Create texture from voxel data
+    voxelTexture = new THREE.Data3DTexture(
+      voxelData.voxels,
+      voxelData.x,
+      voxelData.y,
+      voxelData.z
+    );
     voxelTexture.format = THREE.RedFormat;
     voxelTexture.type = THREE.UnsignedByteType;
-    voxelTexture.minFilter = THREE.LinearFilter;
-    voxelTexture.magFilter = THREE.LinearFilter;
+    voxelTexture.minFilter = THREE.NearestFilter;
+    voxelTexture.magFilter = THREE.NearestFilter;
     voxelTexture.unpackAlignment = 1;
     voxelTexture.needsUpdate = true;
-    if(cloudMaterial){
+
+    // Apply to shader
+    if (cloudMaterial) {
       cloudMaterial.uniforms.map.value = voxelTexture;
-      cloudMaterial.uniformsNeedUpdate=true;
+      cloudMaterial.uniformsNeedUpdate = true;
       cloudMaterial.needsUpdate = true;
     }
+
+    // Scale cube to match voxel dimensions
+    const maxDim = Math.max(voxelData.x, voxelData.y, voxelData.z);
+    cube.scale.set(
+      voxelData.x / maxDim,
+      voxelData.y / maxDim,
+      voxelData.z / maxDim
+    );
   };
-  // Read the file as an ArrayBuffer
   reader.readAsArrayBuffer(file);
-}
+};
 
-const fileInput = document.getElementById('binaryFileInput');
-fileInput.addEventListener('change', LoadVol);
+document.getElementById('binaryFileInput').addEventListener('change', LoadVol);
 
-// Create 3D stripes texture programmatically (32x32x32)
+// Create default stripes texture
 function createStripes3DTexture(size = 32) {
-  const data = new Uint8Array(size * size * size); // 1 byte per voxel
-
+  const data = new Uint8Array(size * size * size);
   for (let z = 0; z < size; z++) {
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
-        const index =  (x + y * size + z * size * size);
-        // Create stripes pattern along x axis
+        const index = x + y * size + z * size * size;
         const stripeWidth = 4;
         const stripe = ((x % (2 * stripeWidth)) < stripeWidth) ? 255 : 0;
-        data[index] = stripe;       // R
+        data[index] = stripe;
       }
     }
   }
-
-  // Create Data3DTexture
   const texture = new THREE.Data3DTexture(data, size, size, size);
   texture.format = THREE.RedFormat;
   texture.type = THREE.UnsignedByteType;
@@ -114,126 +90,86 @@ function createStripes3DTexture(size = 32) {
   texture.magFilter = THREE.LinearFilter;
   texture.unpackAlignment = 1;
   texture.needsUpdate = true;
-
   return texture;
 }
 
 let rotationSpeed = 0.01;
 
-// Renderer & DOM setup
+// Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
-// Background scene and camera (orthographic for fullscreen quad)
+// Background scene
 const screenScene = new THREE.Scene();
 const screenCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-
-// Create fullscreen quad with gradient background shader
-const quadGeometry = new THREE.PlaneGeometry(2, 2);
-const gradientMaterial = new THREE.ShaderMaterial({
-  vertexShader: quadVertexShader,
-  fragmentShader: gradientFragmentShader,
-  depthWrite: false,
-  depthTest: false,
-  transparent: false,
-});
-const quad = new THREE.Mesh(quadGeometry, gradientMaterial);
+const quad = new THREE.Mesh(
+  new THREE.PlaneGeometry(2, 2),
+  new THREE.ShaderMaterial({
+    vertexShader: quadVertexShader,
+    fragmentShader: gradientFragmentShader,
+    depthWrite: false,
+    depthTest: false
+  })
+);
 screenScene.add(quad);
 
-// Main scene and perspective camera
+// Main scene
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
-camera.position.z = 5;
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 3;
 
-// Create cube geometry and material with sampler3D stripes texture
-const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
 const stripesTexture = createStripes3DTexture(32);
 
-const cubeMaterial = new THREE.ShaderMaterial({
-  vertexShader: cubeVertexShader,
-  fragmentShader: cubeFragmentShader,
-  uniforms: {
-    stripesTexture: { value: stripesTexture }
-  },
-});
-
 cloudMaterial = new THREE.RawShaderMaterial({
-    glslVersion: THREE.GLSL3,
-    uniforms: {
-        map: { value: stripesTexture },
-        cameraPos: { value: new THREE.Vector3() },
-        steps: { value: 100 }
-    },
-    vertexShader: cloudVertexShader,
-    fragmentShader: cloudFragmentShader,
-    transparent: true
+  glslVersion: THREE.GLSL3,
+  uniforms: {
+    map: { value: stripesTexture },
+    cameraPos: { value: new THREE.Vector3() },
+    steps: { value: 100 }
+  },
+  vertexShader: cloudVertexShader,
+  fragmentShader: cloudFragmentShader,
+  transparent: true
 });
 
-const cube = new THREE.Mesh(cubeGeometry, cloudMaterial);
+cube = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), cloudMaterial);
 scene.add(cube);
 
-// Orbit controls
+// Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.05;
 
-// Rotation speed UI (assumes you have <input type="range" id="speedSlider"> in your HTML)
-const speedSlider = document.getElementById('speedSlider');
-speedSlider.addEventListener('input', () => {
-  rotationSpeed = parseFloat(speedSlider.value);
+document.getElementById('speedSlider').addEventListener('input', (e) => {
+  rotationSpeed = parseFloat(e.target.value);
 });
 
-// Reset button behavior
-const resetBtn = document.getElementById('resetBtn');
-resetBtn.addEventListener('click', () => {
-  // Reset cube rotation
+document.getElementById('resetBtn').addEventListener('click', () => {
   cube.rotation.set(0, 0, 0);
-
-  // Reset camera position and controls
   camera.position.set(0, 0, 5);
   controls.target.set(0, 0, 0);
   controls.update();
-
-  // Reset rotation speed
   rotationSpeed = 0.01;
-  speedSlider.value = rotationSpeed;
+  document.getElementById('speedSlider').value = rotationSpeed;
 });
 
-
-// Handle resizing
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
 
-// Animation loop
+// Loop
 function animate() {
   requestAnimationFrame(animate);
-
   controls.update();
-
-  const camPos = camera.position;
-  cloudMaterial.uniforms.cameraPos.value.set(camPos.x, camPos.y, camPos.z);
-  
-
-  // Render background first
+  cloudMaterial.uniforms.cameraPos.value.copy(camera.position);
   renderer.autoClear = true;
   renderer.clear();
   renderer.render(screenScene, screenCamera);
-
-  // Render cube on top
   renderer.autoClear = false;
   renderer.render(scene, camera);
 }
-
 animate();

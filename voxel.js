@@ -1,4 +1,4 @@
-import"./modulepreload-polyfill-.js";import{W as V,S as h,O as _,P as B,a as w,M as y,b as F,B as U,R as T,c as R,V as E,C as L,G,d as O,D as W,e as A,U as I,L as g}from"./OrbitControls-.js";const k=`
+import"./modulepreload-polyfill-.js";import{W as C,S as b,O as E,M as S,P as L,a as O,b as R,R as A,V as W,G as I,B as T,c as k,D as P,d as D,U,N as y,L as h}from"./OrbitControls-.js";const G=`
 					in vec3 position;
 
 					uniform mat4 modelMatrix;
@@ -7,36 +7,25 @@ import"./modulepreload-polyfill-.js";import{W as V,S as h,O as _,P as B,a as w,M
 					uniform vec3 cameraPos;
 
 					out vec3 vOrigin;
-					out vec3 vDirection;
+					out vec3 vPosition;
 
 					void main() {
 						vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
 
 						vOrigin = vec3( inverse( modelMatrix ) * vec4( cameraPos, 1.0 ) ).xyz;
-						vDirection = position - vOrigin;
-
+						vPosition = position;
 						gl_Position = projectionMatrix * mvPosition;
 					}
-				`,j=`
+				`,z=`
 					precision highp float;
 					precision highp sampler3D;
 
-					uniform mat4 modelViewMatrix;
-					uniform mat4 projectionMatrix;
-
 					in vec3 vOrigin;
-					in vec3 vDirection;
-
+                    in vec3 vPosition;
 					out vec4 color;
 
-					uniform vec3 base;
 					uniform sampler3D map;
-
-					uniform float threshold;
-					uniform float range;
-					uniform float opacity;
 					uniform float steps;
-					uniform float frame;
 
 					vec2 hitBox( vec3 orig, vec3 dir ) {
 						const vec3 box_min = vec3( - 0.5 );
@@ -55,17 +44,8 @@ import"./modulepreload-polyfill-.js";import{W as V,S as h,O as _,P as B,a as w,M
 						return texture( map, p ).r;
 					}
 
-					float shading( vec3 coord ) {
-						float step = 0.01;
-						return sample1( coord + vec3( - step ) ) - sample1( coord + vec3( step ) );
-					}
-
-					vec4 linearToSRGB( in vec4 value ) {
-						return vec4( mix( pow( value.rgb, vec3( 0.41666 ) ) * 1.055 - vec3( 0.055 ), value.rgb * 12.92, vec3( lessThanEqual( value.rgb, vec3( 0.0031308 ) ) ) ), value.a );
-					}
-
 					void main(){
-						vec3 rayDir = normalize( vDirection );
+						vec3 rayDir = normalize( vPosition - vOrigin );
 						vec2 bounds = hitBox( vOrigin, rayDir );
 
 						if ( bounds.x > bounds.y ) discard;
@@ -77,75 +57,32 @@ import"./modulepreload-polyfill-.js";import{W as V,S as h,O as _,P as B,a as w,M
 						float delta = min( inc.x, min( inc.y, inc.z ) );
 						delta /= steps;
 
-						
-						vec4 ac = vec4( base, 0.0 );
-
 						for ( float t = bounds.x; t < bounds.y; t += delta ) {
-
-							float d = sample1( p + 0.5 );
-
-							d = smoothstep( threshold - range, threshold + range, d ) * opacity;
-
-							float col = shading( p + 0.5 ) * 3.0 + ( ( p.x + p.y ) * 0.25 ) + 0.2;
-
-							ac.rgb += ( 1.0 - ac.a ) * d * col;
-
-							ac.a += ( 1.0 - ac.a ) * d;
-
-							if ( ac.a >= 0.95 ) break;
-
+							float d = sample1( p + 0.5);
+							if(d>0.5){
+							  float c = 1.0 - (t-bounds.x);
+						      color = vec4(c,c,c,1);
+							  break;
+							}
 							p += rayDir * delta;
 
 						}
 
-						color = linearToSRGB( ac );
-
 						if ( color.a == 0.0 ) discard;
 
 					}
-				`;function q(e){const r=new DataView(e),t=8*r.getUint32(0,!0),a=r.getUint32(4,!0),n=r.getUint32(8,!0),i=t*a*n,d=new Uint8Array(i),m=12,u=new Uint8Array(e,m);let p=0;for(let P of u)for(let x=0;x<8&&!(p>=i);x++){const M=(P&1<<x)!==0;d[p]=M?1:0,p++}return{x:t,y:a,z:n,voxels:d}}const H=`
+				`;function H(e){const a=new DataView(e),t=8*a.getUint32(0,!0),r=a.getUint32(4,!0),s=a.getUint32(8,!0),n=t*r*s,l=new Uint8Array(n),v=12,x=new Uint8Array(e,v);let w=0;for(let B of x)for(let f=0;f<8&&!(w>=n);f++){const F=(B&1<<f)!==0;l[w]=F?200:0,w++}return{x:t,y:r,z:s,voxels:l}}const j=`
   varying vec2 vUv;
   void main() {
     vUv = uv;
     gl_Position = vec4(position, 1.0);
   }
-`,N=`
+`,q=`
   varying vec2 vUv;
   void main() {
-    // vertical gradient from dark blue to light blue
     vec3 topColor = vec3(0.1, 0.2, 0.5);
     vec3 bottomColor = vec3(0.0, 0.0, 0.1);
     vec3 color = mix(bottomColor, topColor, vUv.y);
     gl_FragColor = vec4(color, 1.0);
   }
-`,z=`
-  varying vec3 vPos;
-  varying vec3 vNormal;
-  void main() {
-    vPos = position;
-    vNormal = normalMatrix * normal;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`,J=`
-  precision highp float;
-  varying vec3 vPos;
-  varying vec3 vNormal;
-
-  uniform sampler3D stripesTexture;
-
-  void main() {
-    // Transform position from [-0.5,0.5] to [0,1] for sampling 3D texture
-    vec3 texCoords = vPos + 0.5;
-
-    // Sample 3D texture stripes
-    vec4 stripeColor = texture(stripesTexture, texCoords);
-
-    // Simple lighting: diffuse based on normal and light direction
-    vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
-    float diff = max(dot(normalize(vNormal), lightDir), 0.0);
-
-    vec3 finalColor = stripeColor.rgb * diff;
-
-    gl_FragColor = vec4(finalColor, 1.0);
-  }
-`,K=e=>{const r=e.target.files[0],t=new FileReader;t.onload=a=>{const n=a.target.result;q(n)},t.readAsArrayBuffer(r)},Q=document.getElementById("binaryFileInput");Q.addEventListener("change",K);function X(e=32){const r=new Uint8Array(e*e*e);for(let a=0;a<e;a++)for(let n=0;n<e;n++)for(let i=0;i<e;i++){const d=i+n*e+a*e*e,m=4,u=i%(2*m)<m?255:0;r[d]=u}const t=new W(r,e,e,e);return t.format=A,t.type=I,t.minFilter=g,t.magFilter=g,t.unpackAlignment=1,t.needsUpdate=!0,t}let c=.01;const o=new V({antialias:!0});o.setSize(window.innerWidth,window.innerHeight);o.setPixelRatio(Math.min(window.devicePixelRatio,2));document.body.appendChild(o.domElement);const b=new h,Y=new _(-1,1,1,-1,0,1),Z=new B(2,2),$=new w({vertexShader:H,fragmentShader:N,depthWrite:!1,depthTest:!1,transparent:!1}),ee=new y(Z,$);b.add(ee);const S=new h,s=new F(75,window.innerWidth/window.innerHeight,.1,1e3);s.position.z=5;const te=new U(1,1,1),D=X(32);new w({vertexShader:z,fragmentShader:J,uniforms:{stripesTexture:{value:D}}});const oe=new T({glslVersion:G,uniforms:{base:{value:new L(7965344)},map:{value:D},cameraPos:{value:new E},threshold:{value:.25},opacity:{value:.25},range:{value:.1},steps:{value:100},frame:{value:0}},vertexShader:k,fragmentShader:j,side:R,transparent:!0}),v=new y(te,oe);S.add(v);const l=new O(s,o.domElement);l.enableDamping=!0;l.dampingFactor=.05;const f=document.getElementById("speedSlider");f.addEventListener("input",()=>{c=parseFloat(f.value)});const re=document.getElementById("resetBtn");re.addEventListener("click",()=>{v.rotation.set(0,0,0),s.position.set(0,0,5),l.target.set(0,0,0),l.update(),c=.01,f.value=c});window.addEventListener("resize",()=>{s.aspect=window.innerWidth/window.innerHeight,s.updateProjectionMatrix(),o.setSize(window.innerWidth,window.innerHeight),o.setPixelRatio(Math.min(window.devicePixelRatio,2))});function C(){requestAnimationFrame(C),v.rotation.x+=c,v.rotation.y+=c,l.update(),o.autoClear=!0,o.clear(),o.render(b,Y),o.autoClear=!1,o.render(S,s)}C();
+`;let o,c,d,p;const N=e=>{const a=e.target.files[0],t=new FileReader;t.onload=r=>{const s=r.target.result;o=H(s),c=new P(o.voxels,o.x,o.y,o.z),c.format=D,c.type=U,c.minFilter=y,c.magFilter=y,c.unpackAlignment=1,c.needsUpdate=!0,d&&(d.uniforms.map.value=c,d.uniformsNeedUpdate=!0,d.needsUpdate=!0);const n=Math.max(o.x,o.y,o.z);p.scale.set(o.x/n,o.y/n,o.z/n)},t.readAsArrayBuffer(a)};document.getElementById("binaryFileInput").addEventListener("change",N);function J(e=32){const a=new Uint8Array(e*e*e);for(let r=0;r<e;r++)for(let s=0;s<e;s++)for(let n=0;n<e;n++){const l=n+s*e+r*e*e,v=4,x=n%(2*v)<v?255:0;a[l]=x}const t=new P(a,e,e,e);return t.format=D,t.type=U,t.minFilter=h,t.magFilter=h,t.unpackAlignment=1,t.needsUpdate=!0,t}let g=.01;const i=new C({antialias:!0});i.setSize(window.innerWidth,window.innerHeight);i.setPixelRatio(Math.min(window.devicePixelRatio,2));document.body.appendChild(i.domElement);const _=new b,K=new E(-1,1,1,-1,0,1),Q=new S(new L(2,2),new O({vertexShader:j,fragmentShader:q,depthWrite:!1,depthTest:!1}));_.add(Q);const M=new b,m=new R(75,window.innerWidth/window.innerHeight,.1,1e3);m.position.z=3;const X=J(32);d=new A({glslVersion:I,uniforms:{map:{value:X},cameraPos:{value:new W},steps:{value:100}},vertexShader:G,fragmentShader:z,transparent:!0});p=new S(new T(1,1,1),d);M.add(p);const u=new k(m,i.domElement);u.enableDamping=!0;document.getElementById("speedSlider").addEventListener("input",e=>{g=parseFloat(e.target.value)});document.getElementById("resetBtn").addEventListener("click",()=>{p.rotation.set(0,0,0),m.position.set(0,0,5),u.target.set(0,0,0),u.update(),g=.01,document.getElementById("speedSlider").value=g});window.addEventListener("resize",()=>{m.aspect=window.innerWidth/window.innerHeight,m.updateProjectionMatrix(),i.setSize(window.innerWidth,window.innerHeight),i.setPixelRatio(Math.min(window.devicePixelRatio,2))});function V(){requestAnimationFrame(V),u.update(),d.uniforms.cameraPos.value.copy(m.position),i.autoClear=!0,i.clear(),i.render(_,K),i.autoClear=!1,i.render(M,m)}V();
