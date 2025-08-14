@@ -53,8 +53,14 @@ const LoadVol = (event) => {
     // Apply to shader
     if (cloudMaterial) {
       cloudMaterial.uniforms.map.value = voxelTexture;
+      // IMPORTANT: Update voxelGridSize here to match the loaded volume dimensions
+      cloudMaterial.uniforms.voxelGridSize.value.set(
+        voxelData.x,
+        voxelData.y,
+        voxelData.z
+      );
       cloudMaterial.uniformsNeedUpdate = true;
-      cloudMaterial.needsUpdate = true;
+      cloudMaterial.needsUpdate = true; // Added for explicit material update
     }
 
     // Scale cube to match voxel dimensions
@@ -118,7 +124,7 @@ screenScene.add(quad);
 // Main scene
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 3;
+camera.position.z = 2;
 
 const stripesTexture = createStripes3DTexture(32);
 
@@ -127,7 +133,9 @@ cloudMaterial = new THREE.RawShaderMaterial({
   uniforms: {
     map: { value: stripesTexture },
     cameraPos: { value: new THREE.Vector3() },
-    steps: { value: 100 }
+    steps: { value: 100 },
+    // NEW: Initialize voxelGridSize uniform here
+    voxelGridSize: { value: new THREE.Vector3(32, 32, 32) } // Default to stripes texture size
   },
   vertexShader: cloudVertexShader,
   fragmentShader: cloudFragmentShader,
@@ -165,6 +173,7 @@ window.addEventListener('resize', () => {
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+  // Ensure cameraPos is updated every frame, as it's used for vOrigin
   cloudMaterial.uniforms.cameraPos.value.copy(camera.position);
   renderer.autoClear = true;
   renderer.clear();
