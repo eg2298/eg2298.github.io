@@ -7,8 +7,8 @@ in vec3 vPosition;
 out vec4 color;
 
 uniform sampler3D map;
-uniform float steps;
 uniform vec3 lightDir; // normalized light direction
+uniform vec3 voxelSize;
 
 vec2 hitBox(vec3 orig, vec3 dir) {
     const vec3 box_min = vec3(-0.5);
@@ -35,88 +35,49 @@ vec3 computeNormal(vec3 texCoord, float stepSize) {
     return normalize(vec3(dx, dy, dz));
 }
 
+const float eps = 0.0005;
+
+float vecmin(in vec3 p ) { return min(p.x,min(p.y,p.z));}
+
 void main() {
     vec3 rayDir = normalize(vPosition - vOrigin);
     vec2 bounds = hitBox(vOrigin, rayDir);
 
     if (bounds.x > bounds.y) discard;
     bounds.x = max(bounds.x, 0.0);
+    // Initial position in voxel coordinates 
+    vec3 p0 = (vOrigin + bounds.x * rayDir)/voxelSize;
 
-    vec3 pos = vOrigin + bounds.x * rayDir;
-    vec4 finalColor = vec4(0.0);
-    
-    // DDA Setup:
-    // This scales the ray direction to the voxel grid size.
-    vec3 invDir = 1.0 / rayDir;
-    vec3 step = sign(rayDir);
+    vec3 p0abs = sign(rayDir) * p0;
+    if(rayDir.x<0.0){p0abs.x += 1.0 / voxelSize.x;}
+    if(rayDir.y<0.0){p0abs.y += 1.0 / voxelSize.y;}
+    if(rayDir.z<0.0){p0abs.z += 1.0 / voxelSize.z;}
 
-    // Initial position in voxel coordinates (from 0 to steps)
-    vec3 voxelPos = floor((pos + 0.5) * steps);
+    color.a= 1.0;
 
-    // tMax is the distance to the next voxel boundary along each axis.
-    vec3 tMax;
-    tMax.x = length((voxelPos.x + step.x * 0.5) / steps - pos.x) / length(rayDir.x);
-    tMax.y = length((voxelPos.y + step.y * 0.5) / steps - pos.y) / length(rayDir.y);
-    tMax.z = length((voxelPos.z + step.z * 0.5) / steps - pos.z) / length(rayDir.z);
-
-    // tDelta is the distance to travel to cross one full voxel.
-    vec3 tDelta = step * invDir / steps;
+    vec3 dirAbs = abs(rayDir);            
     float t = 0.0;
-    
-    for (int i = 0; i < 256; i++) {
-        // Break if ray leaves the bounding box
-        if (t > bounds.y) break;
+        
+    bounds.x/=voxelSize.x;
+    bounds.y/=voxelSize.x;
 
-        // Current position and density sampling
-        vec3 texCoord = clamp(pos + 0.5, 0.0, 1.0);
+    while(t<bounds.y){
+        // Current position and density sampling        
+        vec3 texCoord = clamp( (p0 + t * rayDir + 0.5) * voxelSize + 0.5 , 0.0, 1.0);
         float density = densityAt(texCoord);
 
         if (density > 0.05) {
-            // Calculate step opacity based on the size of the current step
-            float stepDistance = min(tMax.x, min(tMax.y, tMax.z));
-            float stepOpacity = density * stepDistance * 25.0; 
-
-            // Calculate normal and lighting
-            vec3 normal = computeNormal(texCoord, stepDistance);
-            float diff = max(dot(normal, lightDir), 0.0);
-            
             vec3 lightColor = vec3(1.0, 0.9, 0.8);
             vec3 ambientColor = vec3(0.3);
-            vec3 stepColor = ambientColor + lightColor * diff;
-
-            // Volumetric accumulation
-            finalColor.rgb += stepColor * stepOpacity * (1.0 - finalColor.a);
-            finalColor.a += stepOpacity;
-
-            if (finalColor.a > 0.99) break;
+            vec3 stepColor = ambientColor + 0.7 * (1.0-t * voxelSize.x) * lightColor;
+            color.rgb = stepColor;
+            break;
         }
-
-        // DDA Step: advance the ray to the next cell boundary
-        if (tMax.x < tMax.y) {
-            if (tMax.x < tMax.z) {
-                t = tMax.x;
-                tMax.x += tDelta.x;
-                voxelPos.x += step.x;
-            } else {
-                t = tMax.z;
-                tMax.z += tDelta.z;
-                voxelPos.z += step.z;
-            }
-        } else {
-            if (tMax.y < tMax.z) {
-                t = tMax.y;
-                tMax.y += tDelta.y;
-                voxelPos.y += step.y;
-            } else {
-                t = tMax.z;
-                tMax.z += tDelta.z;
-                voxelPos.z += step.z;
-            }
-        }
-        pos = vOrigin + t * rayDir;
+      vec3 pAbs = p0abs + dirAbs * t;
+      vec3 deltas = (1.0-fract(pAbs)) / dirAbs;
+      t += max(eps, vecmin(deltas));
     }
 
-    color = finalColor;
     if (color.a == 0.0) discard;
 }
 `;

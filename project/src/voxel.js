@@ -53,11 +53,11 @@ const LoadVol = (event) => {
     // Apply to shader
     if (cloudMaterial) {
       cloudMaterial.uniforms.map.value = voxelTexture;
-      // IMPORTANT: Update voxelGridSize here to match the loaded volume dimensions
-      cloudMaterial.uniforms.voxelGridSize.value.set(
-        voxelData.x,
-        voxelData.y,
-        voxelData.z
+      // IMPORTANT: Update voxelSize here to match the loaded volume dimensions
+      cloudMaterial.uniforms.voxelSize.value.set(
+        1.0/voxelData.x,
+        1.0/voxelData.y,
+        1.0/voxelData.z
       );
       cloudMaterial.uniformsNeedUpdate = true;
       cloudMaterial.needsUpdate = true; // Added for explicit material update
@@ -135,7 +135,7 @@ cloudMaterial = new THREE.RawShaderMaterial({
     cameraPos: { value: new THREE.Vector3() },
     steps: { value: 100 },
     // NEW: Initialize voxelGridSize uniform here
-    voxelGridSize: { value: new THREE.Vector3(32, 32, 32) } // Default to stripes texture size
+    voxelSize: { value: new THREE.Vector3(1.0/32, 1.0/32, 1.0/32) } // Default to stripes texture size
   },
   vertexShader: cloudVertexShader,
   fragmentShader: cloudFragmentShader,
