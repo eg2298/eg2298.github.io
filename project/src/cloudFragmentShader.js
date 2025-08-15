@@ -12,7 +12,7 @@ uniform float voxelSize;
 uniform vec3 vOrigin;
 
 //box_min = 0.
-vec2 hitBox(vec3 orig, vec3 dir, vec3 box_max) {    
+vec3 hitBox(vec3 orig, vec3 dir, vec3 box_max) {    
     vec3 inv_dir = 1.0 / dir;
     vec3 tmin_tmp = (- orig) * inv_dir;
     vec3 tmax_tmp = (box_max - orig) * inv_dir;
@@ -20,7 +20,17 @@ vec2 hitBox(vec3 orig, vec3 dir, vec3 box_max) {
     vec3 tmax = max(tmin_tmp, tmax_tmp);
     float t0 = max(max(tmin.x, tmin.y), tmin.z);
     float t1 = min(min(tmax.x, tmax.y), tmax.z);
-    return vec2(t0, t1);
+    float  axis = 0.0;
+    if(tmin.x < tmin.y){
+      if(tmin.z<tmin.y){
+        axis = 1.0;
+      }else{
+        axis = 2.0;
+      } 
+    }else if(tmin.x<tmin.z){
+      axis = 2.0;
+    }
+    return vec3(t0, t1, axis);
 }
 
 float densityAt(vec3 texCoord) {
@@ -36,14 +46,14 @@ vec3 computeNormal(vec3 texCoord, float stepSize) {
 }
 
 const float eps = 0.0005;
-const vec3 lightDir = vec3(0.1,0.894,0.1);
+const vec3 lightDir = vec3(-0.3,0.948,0.1);
 float vecmin(in vec3 p ) { return min(p.x,min(p.y,p.z));}
 
 void main() {
     vec3 rayDir = normalize(vPosition - vOrigin);
     vec3 box_max = gridSize * vec3(voxelSize);
     vec3 O = vOrigin + gridSize * vec3(0.5 * voxelSize);
-    vec2 bounds = hitBox(O, rayDir, box_max);
+    vec3 bounds = hitBox(O, rayDir, box_max);
 
     if (bounds.x > bounds.y) discard;
     bounds.x = max(bounds.x, 0.0);
@@ -65,10 +75,10 @@ void main() {
     bounds.x/=voxelSize;
     bounds.y/=voxelSize;
 	float maxT = bounds.y - bounds.x;
-    int minAxis = 0;
+    int minAxis = int(bounds.z);
     while(t <= maxT){
         // Current position and density sampling        
-        vec3 texCoord = clamp( (p0 + t * rayDir) / gridSize, 0.0, 1.0);
+        vec3 texCoord = clamp( (p0 + (t +0.0001) * rayDir) / gridSize, 0.0, 1.0);
         float density = densityAt(texCoord);
 
         if (density > 0.05) {
