@@ -1,38 +1,33 @@
-import"./modulepreload-polyfill-.js";import{W as B,S as C,O as F,M as S,P as E,a as L,b as T,R as O,V as w,G as R,B as I,c as W,D,d as V,U as A,N as h,L as b}from"./OrbitControls-.js";const k=`
+import"./modulepreload-polyfill-.js";import{W as O,S as C,O as E,M as A,P as L,a as T,b as R,R as I,V as S,G as W,B as k,c as G,D as P,d as _,U as M,N as h,L as D}from"./OrbitControls-.js";const H=`
 					in vec3 position;
-
-					uniform mat4 modelMatrix;
+					uniform mat4 modelMatrix;			
 					uniform mat4 modelViewMatrix;
-					uniform mat4 projectionMatrix;
-					uniform vec3 cameraPos;
-
-					out vec3 vOrigin;
+					uniform mat4 projectionMatrix;					
 					out vec3 vPosition;
 
 					void main() {
 						vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-
-						vOrigin = vec3( inverse( modelMatrix ) * vec4( cameraPos, 1.0 ) ).xyz;
-						vPosition = position;
+						vPosition = (modelMatrix * vec4( position,1.0)).xyz;
 						gl_Position = projectionMatrix * mvPosition;
 					}
-				`,G=`
+				`,N=`
 precision highp float;
 precision highp sampler3D;
 
-in vec3 vOrigin;
 in vec3 vPosition;
 out vec4 color;
 
 uniform sampler3D map;
 uniform vec3 lightDir; // normalized light direction
-uniform vec3 voxelSize;
+uniform vec3 gridSize;
+//cubic voxel only.
+uniform float voxelSize;
+uniform vec3 vOrigin;
 
-vec2 hitBox(vec3 orig, vec3 dir) {
-    const vec3 box_min = vec3(-0.5);
-    const vec3 box_max = vec3(0.5);
+//box_min = 0.
+vec2 hitBox(vec3 orig, vec3 dir, vec3 box_max) {    
     vec3 inv_dir = 1.0 / dir;
-    vec3 tmin_tmp = (box_min - orig) * inv_dir;
+    vec3 tmin_tmp = (- orig) * inv_dir;
     vec3 tmax_tmp = (box_max - orig) * inv_dir;
     vec3 tmin = min(tmin_tmp, tmax_tmp);
     vec3 tmax = max(tmin_tmp, tmax_tmp);
@@ -59,36 +54,40 @@ float vecmin(in vec3 p ) { return min(p.x,min(p.y,p.z));}
 
 void main() {
     vec3 rayDir = normalize(vPosition - vOrigin);
-    vec2 bounds = hitBox(vOrigin, rayDir);
+    vec3 box_max = gridSize * vec3(voxelSize);
+    vec3 O = vOrigin + gridSize * vec3(0.5 * voxelSize);
+    vec2 bounds = hitBox(O, rayDir, box_max);
 
     if (bounds.x > bounds.y) discard;
     bounds.x = max(bounds.x, 0.0);
 
-	vec3 rayDirVox = rayDir / voxelSize;
-	vec3 dirAbs = max(abs(rayDirVox), vec3(1e-6));
+	vec3 dirAbs = max(abs(rayDir), vec3(1e-6));
 
     // Initial position in voxel coordinates 
-    vec3 p0 = (vOrigin + bounds.x * rayDir)/voxelSize;
+    vec3 p0 = (O + bounds.x * rayDir)/voxelSize;
 
-    vec3 p0abs = sign(rayDirVox) * p0;
-    if(rayDirVox.x<0.0) p0abs.x += 1.0;
-    if(rayDirVox.y<0.0) p0abs.y += 1.0;
-    if(rayDirVox.z<0.0) p0abs.z += 1.0;
+    vec3 p0abs = sign(rayDir) * p0;
+    if(rayDir.x<0.0) p0abs.x += gridSize.x;
+    if(rayDir.y<0.0) p0abs.y +=  gridSize.y;
+    if(rayDir.z<0.0) p0abs.z +=  gridSize.z;
 
     color.a= 1.0;
-          
+    //color.rgb = voxelSize * p0;
+    //return;
     float t = 0.0;
+    bounds.x/=voxelSize;
+    bounds.y/=voxelSize;
 	float maxT = bounds.y - bounds.x;
 
-    while(t < maxT){
+    while(t <= maxT){
         // Current position and density sampling        
-        vec3 texCoord = clamp( (p0 + t * rayDirVox + 0.5) * voxelSize + 0.5 , 0.0, 1.0);
+        vec3 texCoord = clamp( (p0 + t * rayDir) / gridSize, 0.0, 1.0);
         float density = densityAt(texCoord);
 
         if (density > 0.05) {
             vec3 lightColor = vec3(1.0, 0.9, 0.8);
             vec3 ambientColor = vec3(0.3);
-            vec3 stepColor = ambientColor + 0.7 * (1.0-t * t / maxT) * lightColor;
+            vec3 stepColor = ambientColor + 0.7 * (1.0-t / maxT) * lightColor;
             color = vec4(stepColor, 1.0);
             break;
         }
@@ -97,15 +96,15 @@ void main() {
       t += max(eps, vecmin(deltas));
     }
 
-    if (t >= maxT) discard;
+    if (t > maxT) discard;
 }
-`;function H(e){const r=new DataView(e),o=8*r.getUint32(0,!0),a=r.getUint32(4,!0),s=r.getUint32(8,!0),i=o*a*s,m=new Uint8Array(i),v=12,u=new Uint8Array(e,v);let y=0;for(let _ of u)for(let f=0;f<8&&!(y>=i);f++){const M=(_&1<<f)!==0;m[y]=M?200:0,y++}return{x:o,y:a,z:s,voxels:m}}const N=`
+`;function j(e){const a=new DataView(e),o=8*a.getUint32(0,!0),l=a.getUint32(4,!0),i=a.getUint32(8,!0),r=o*l*i,x=new Uint8Array(r),u=12,f=new Uint8Array(e,u);let p=0;for(let z of f)for(let w=0;w<8&&!(p>=r);w++){const F=(z&1<<w)!==0;x[p]=F?200:0,p++}return{x:o,y:l,z:i,voxels:x}}const q=`
   varying vec2 vUv;
   void main() {
     vUv = uv;
     gl_Position = vec4(position, 1.0);
   }
-`,j=`
+`,J=`
   varying vec2 vUv;
   void main() {
     vec3 topColor = vec3(0.1, 0.2, 0.5);
@@ -113,4 +112,4 @@ void main() {
     vec3 color = mix(bottomColor, topColor, vUv.y);
     gl_FragColor = vec4(color, 1.0);
   }
-`;let t,d,c,p;const q=e=>{const r=e.target.files[0],o=new FileReader;o.onload=a=>{const s=a.target.result;t=H(s),d=new D(t.voxels,t.x,t.y,t.z),d.format=V,d.type=A,d.minFilter=h,d.magFilter=h,d.unpackAlignment=1,d.needsUpdate=!0,c&&(c.uniforms.map.value=d,c.uniforms.voxelSize.value.set(1/t.x,1/t.y,1/t.z),c.uniformsNeedUpdate=!0,c.needsUpdate=!0);const i=Math.max(t.x,t.y,t.z);p.scale.set(t.x/i,t.y/i,t.z/i)},o.readAsArrayBuffer(r)};document.getElementById("binaryFileInput").addEventListener("change",q);function J(e=32){const r=new Uint8Array(e*e*e);for(let a=0;a<e;a++)for(let s=0;s<e;s++)for(let i=0;i<e;i++){const m=i+s*e+a*e*e,v=4,u=i%(2*v)<v?255:0;r[m]=u}const o=new D(r,e,e,e);return o.format=V,o.type=A,o.minFilter=b,o.magFilter=b,o.unpackAlignment=1,o.needsUpdate=!0,o}let g=.01;const n=new B({antialias:!0});n.setSize(window.innerWidth,window.innerHeight);n.setPixelRatio(Math.min(window.devicePixelRatio,2));document.body.appendChild(n.domElement);const P=new C,K=new F(-1,1,1,-1,0,1),Q=new S(new E(2,2),new L({vertexShader:N,fragmentShader:j,depthWrite:!1,depthTest:!1}));P.add(Q);const z=new C,l=new T(75,window.innerWidth/window.innerHeight,.1,1e3);l.position.z=2;const X=J(32);c=new O({glslVersion:R,uniforms:{map:{value:X},cameraPos:{value:new w},steps:{value:100},voxelSize:{value:new w(1/32,1/32,1/32)}},vertexShader:k,fragmentShader:G,transparent:!0});p=new S(new I(1,1,1),c);z.add(p);const x=new W(l,n.domElement);x.enableDamping=!0;document.getElementById("speedSlider").addEventListener("input",e=>{g=parseFloat(e.target.value)});document.getElementById("resetBtn").addEventListener("click",()=>{p.rotation.set(0,0,0),l.position.set(0,0,5),x.target.set(0,0,0),x.update(),g=.01,document.getElementById("speedSlider").value=g});window.addEventListener("resize",()=>{l.aspect=window.innerWidth/window.innerHeight,l.updateProjectionMatrix(),n.setSize(window.innerWidth,window.innerHeight),n.setPixelRatio(Math.min(window.devicePixelRatio,2))});function U(){requestAnimationFrame(U),x.update(),c.uniforms.cameraPos.value.copy(l.position),n.autoClear=!0,n.clear(),n.render(P,K),n.autoClear=!1,n.render(z,l)}U();
+`;let t,c,d,v;const K=e=>{const a=e.target.files[0],o=new FileReader;o.onload=l=>{const i=l.target.result;t=j(i),c=new P(t.voxels,t.x,t.y,t.z),c.format=_,c.type=M,c.minFilter=h,c.magFilter=h,c.unpackAlignment=1,c.needsUpdate=!0;const r=Math.max(t.x,t.y,t.z);d&&(d.uniforms.map.value=c,d.uniforms.gridSize.value.set(t.x,t.y,t.z),d.uniforms.voxelSize.value=1/r,d.uniformsNeedUpdate=!0,d.needsUpdate=!0),v.scale.set(t.x/r,t.y/r,t.z/r)},o.readAsArrayBuffer(a)};document.getElementById("binaryFileInput").addEventListener("change",K);function Q(e=32){const a=e+16,o=e+32,l=new Uint8Array(e*o*a);for(let r=0;r<a;r++)for(let x=0;x<o;x++)for(let u=0;u<e;u++){const f=u+x*e+r*e*o,p=4,z=u%(2*p)<p?255:0;l[f]=z}const i=new P(l,e,o,a);return i.format=_,i.type=M,i.minFilter=D,i.magFilter=D,i.unpackAlignment=1,i.needsUpdate=!0,i.userData.size=[e,o,a],i}let b=.01;const n=new O({antialias:!0});n.setSize(window.innerWidth,window.innerHeight);n.setPixelRatio(Math.min(window.devicePixelRatio,2));document.body.appendChild(n.domElement);const U=new C,X=new E(-1,1,1,-1,0,1),Y=new A(new L(2,2),new T({vertexShader:q,fragmentShader:J,depthWrite:!1,depthTest:!1}));U.add(Y);const V=new C,m=new R(75,window.innerWidth/window.innerHeight,.1,1e3);m.position.z=2;const s=Q(32),g=Math.max(s.userData.size[0],s.userData.size[1],s.userData.size[2]);d=new I({glslVersion:W,uniforms:{map:{value:s},vOrigin:{value:new S},steps:{value:100},voxelSize:{value:1/g},gridSize:{value:new S(s.userData.size[0],s.userData.size[1],s.userData.size[2])}},vertexShader:H,fragmentShader:N,transparent:!0});v=new A(new k(1,1,1),d);v.scale.x=s.userData.size[0]/g;v.scale.y=s.userData.size[1]/g;v.scale.z=s.userData.size[2]/g;V.add(v);const y=new G(m,n.domElement);y.enableDamping=!0;document.getElementById("speedSlider").addEventListener("input",e=>{b=parseFloat(e.target.value)});document.getElementById("resetBtn").addEventListener("click",()=>{v.rotation.set(0,0,0),m.position.set(0,0,5),y.target.set(0,0,0),y.update(),b=.01,document.getElementById("speedSlider").value=b});window.addEventListener("resize",()=>{m.aspect=window.innerWidth/window.innerHeight,m.updateProjectionMatrix(),n.setSize(window.innerWidth,window.innerHeight),n.setPixelRatio(Math.min(window.devicePixelRatio,2))});function B(){requestAnimationFrame(B),y.update(),d.uniforms.vOrigin.value.copy(m.position),n.autoClear=!0,n.clear(),n.render(U,X),n.autoClear=!1,n.render(V,m)}B();
