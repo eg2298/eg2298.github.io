@@ -2,13 +2,13 @@ export const cloudFragmentShader = /* glsl */`
 precision highp float;
 precision highp sampler3D;
 
-in vec3 vOrigin;
 in vec3 vPosition;
 out vec4 color;
 
 uniform sampler3D map;
 uniform vec3 lightDir; // normalized light direction
 uniform vec3 voxelSize;
+uniform vec3 vOrigin;
 
 vec2 hitBox(vec3 orig, vec3 dir) {
     const vec3 box_min = vec3(-0.5);

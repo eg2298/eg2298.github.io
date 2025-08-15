@@ -56,8 +56,8 @@ const LoadVol = (event) => {
       // IMPORTANT: Update voxelSize here to match the loaded volume dimensions
       cloudMaterial.uniforms.voxelSize.value.set(
         1.0/voxelData.x,
-        1.0/voxelData.y,
-        1.0/voxelData.z
+        1.0/voxelData.x,
+        1.0/voxelData.x
       );
       cloudMaterial.uniformsNeedUpdate = true;
       cloudMaterial.needsUpdate = true; // Added for explicit material update
@@ -132,7 +132,7 @@ cloudMaterial = new THREE.RawShaderMaterial({
   glslVersion: THREE.GLSL3,
   uniforms: {
     map: { value: stripesTexture },
-    cameraPos: { value: new THREE.Vector3() },
+    vOrigin: { value: new THREE.Vector3() },
     steps: { value: 100 },
     // NEW: Initialize voxelGridSize uniform here
     voxelSize: { value: new THREE.Vector3(1.0/32, 1.0/32, 1.0/32) } // Default to stripes texture size
@@ -169,12 +169,20 @@ window.addEventListener('resize', () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
 
+const invModelMatrix = new THREE.Matrix4();
+const eyeCoord = new THREE.Vector3();
 // Loop
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
   // Ensure cameraPos is updated every frame, as it's used for vOrigin
-  cloudMaterial.uniforms.cameraPos.value.copy(camera.position);
+  if(cube.matrix){
+    invModelMatrix.copy(cube.matrix);
+    invModelMatrix.invert();
+    eyeCoord.copy(camera.position);
+    eyeCoord.applyMatrix4(invModelMatrix);
+  }
+  cloudMaterial.uniforms.vOrigin.value.copy(eyeCoord);
   renderer.autoClear = true;
   renderer.clear();
   renderer.render(screenScene, screenCamera);
