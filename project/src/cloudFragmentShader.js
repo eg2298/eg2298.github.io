@@ -6,7 +6,6 @@ in vec3 vPosition;
 out vec4 color;
 
 uniform sampler3D map;
-uniform vec3 lightDir; // normalized light direction
 uniform vec3 gridSize;
 //cubic voxel only.
 uniform float voxelSize;
@@ -37,7 +36,7 @@ vec3 computeNormal(vec3 texCoord, float stepSize) {
 }
 
 const float eps = 0.0005;
-
+const vec3 lightDir = vec3(0.1,0.894,0.1);
 float vecmin(in vec3 p ) { return min(p.x,min(p.y,p.z));}
 
 void main() {
@@ -66,21 +65,48 @@ void main() {
     bounds.x/=voxelSize;
     bounds.y/=voxelSize;
 	float maxT = bounds.y - bounds.x;
-
+    int minAxis = 0;
     while(t <= maxT){
         // Current position and density sampling        
         vec3 texCoord = clamp( (p0 + t * rayDir) / gridSize, 0.0, 1.0);
         float density = densityAt(texCoord);
 
         if (density > 0.05) {
+            vec3 normal = vec3(-1.0, 0.0, 0.0);
+            if(minAxis == 0){
+              if(rayDir.x<0.0){
+                normal.x=1.0;
+              }
+            }else if(minAxis == 1){
+              normal = vec3(0.0,-1.0,0.0);
+              if(rayDir.y<0.0){
+              normal.y = 1.0;
+              }
+            }else{
+              normal = vec3(0.0,0.0,-1.0);
+               if(rayDir.z<0.0){
+               normal.z = 1.0;
+               }
+            }
+
             vec3 lightColor = vec3(1.0, 0.9, 0.8);
+            float diffuse = abs(dot(normal, lightDir));
             vec3 ambientColor = vec3(0.3);
-            vec3 stepColor = ambientColor + 0.7 * (1.0-t / maxT) * lightColor;
+            vec3 stepColor = ambientColor + diffuse * lightColor;
             color = vec4(stepColor, 1.0);
             break;
         }
       vec3 pAbs = p0abs + dirAbs * t;
       vec3 deltas = (1.0-fract(pAbs)) / dirAbs;
+      minAxis = 0;
+      if(deltas.y < deltas.x){
+        minAxis = 1;
+        if(deltas.z<deltas.y){
+          minAxis = 2;
+        }
+      }else if(deltas.z<deltas.x){
+        minAxis = 2;
+      }
       t += max(eps, vecmin(deltas));
     }
 
