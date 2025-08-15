@@ -50,21 +50,23 @@ const LoadVol = (event) => {
     voxelTexture.unpackAlignment = 1;
     voxelTexture.needsUpdate = true;
 
+    // Scale cube to match voxel dimensions
+    const maxDim = Math.max(voxelData.x, voxelData.y, voxelData.z);
+
     // Apply to shader
     if (cloudMaterial) {
       cloudMaterial.uniforms.map.value = voxelTexture;
       // IMPORTANT: Update voxelSize here to match the loaded volume dimensions
-      cloudMaterial.uniforms.voxelSize.value.set(
-        1.0/voxelData.x,
-        1.0/voxelData.x,
-        1.0/voxelData.x
+      cloudMaterial.uniforms.gridSize.value.set(
+        voxelData.x,
+        voxelData.y,
+        voxelData.z
       );
+      cloudMaterial.uniforms.voxelSize.value = 1.0 / maxDim;
       cloudMaterial.uniformsNeedUpdate = true;
       cloudMaterial.needsUpdate = true; // Added for explicit material update
     }
 
-    // Scale cube to match voxel dimensions
-    const maxDim = Math.max(voxelData.x, voxelData.y, voxelData.z);
     cube.scale.set(
       voxelData.x / maxDim,
       voxelData.y / maxDim,
@@ -78,24 +80,27 @@ document.getElementById('binaryFileInput').addEventListener('change', LoadVol);
 
 // Create default stripes texture
 function createStripes3DTexture(size = 32) {
-  const data = new Uint8Array(size * size * size);
-  for (let z = 0; z < size; z++) {
-    for (let y = 0; y < size; y++) {
+  const sizez = size + 16;
+  const sizey = size + 32;
+  const data = new Uint8Array(size * sizey * sizez);
+  for (let z = 0; z < sizez; z++) {
+    for (let y = 0; y < sizey; y++) {
       for (let x = 0; x < size; x++) {
-        const index = x + y * size + z * size * size;
+        const index = x + y * size + z * size * sizey;
         const stripeWidth = 4;
         const stripe = ((x % (2 * stripeWidth)) < stripeWidth) ? 255 : 0;
         data[index] = stripe;
       }
     }
   }
-  const texture = new THREE.Data3DTexture(data, size, size, size);
+  const texture = new THREE.Data3DTexture(data, size, sizey, sizez);
   texture.format = THREE.RedFormat;
   texture.type = THREE.UnsignedByteType;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.unpackAlignment = 1;
   texture.needsUpdate = true;
+  texture.userData.size = [size , sizey, sizez];
   return texture;
 }
 
@@ -128,6 +133,7 @@ camera.position.z = 2;
 
 const stripesTexture = createStripes3DTexture(32);
 
+const maxDim = Math.max(stripesTexture.userData.size[0], stripesTexture.userData.size[1], stripesTexture.userData.size[2]);
 cloudMaterial = new THREE.RawShaderMaterial({
   glslVersion: THREE.GLSL3,
   uniforms: {
@@ -135,7 +141,8 @@ cloudMaterial = new THREE.RawShaderMaterial({
     vOrigin: { value: new THREE.Vector3() },
     steps: { value: 100 },
     // NEW: Initialize voxelGridSize uniform here
-    voxelSize: { value: new THREE.Vector3(1.0/32, 1.0/32, 1.0/32) } // Default to stripes texture size
+    voxelSize: { value: 1.0/maxDim}, // Default to stripes texture size,
+    gridSize: {value: new THREE.Vector3(stripesTexture.userData.size[0],stripesTexture.userData.size[1],stripesTexture.userData.size[2])}
   },
   vertexShader: cloudVertexShader,
   fragmentShader: cloudFragmentShader,
@@ -143,6 +150,9 @@ cloudMaterial = new THREE.RawShaderMaterial({
 });
 
 cube = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), cloudMaterial);
+cube.scale.x= stripesTexture.userData.size[0]/maxDim;
+cube.scale.y= stripesTexture.userData.size[1]/maxDim;
+cube.scale.z= stripesTexture.userData.size[2]/maxDim;
 scene.add(cube);
 
 // Controls
@@ -169,20 +179,12 @@ window.addEventListener('resize', () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
 
-const invModelMatrix = new THREE.Matrix4();
-const eyeCoord = new THREE.Vector3();
 // Loop
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
   // Ensure cameraPos is updated every frame, as it's used for vOrigin
-  if(cube.matrix){
-    invModelMatrix.copy(cube.matrix);
-    invModelMatrix.invert();
-    eyeCoord.copy(camera.position);
-    eyeCoord.applyMatrix4(invModelMatrix);
-  }
-  cloudMaterial.uniforms.vOrigin.value.copy(eyeCoord);
+  cloudMaterial.uniforms.vOrigin.value.copy(camera.position);
   renderer.autoClear = true;
   renderer.clear();
   renderer.render(screenScene, screenCamera);
