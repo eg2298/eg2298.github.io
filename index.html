@@ -80,8 +80,9 @@
             <h2>My Work</h2>
             <div class="portfolio-grid">
                 <div class="project-card">
-                    <img src="./assets/voxel-.png" alt="Project 1 Thumbnail">
+                    <img src="./assets/voxel_2-.png" alt="Project 1 Thumbnail">
                     <h3>Voxel Viewer</h3>
+                    <p>Volume Renderer with DDA Raymarching</p>
                     <a href="volume.html" target="_blank" class="project-link">View Voxel</a>
                     <a href="https://github.com/eg2298/eg2298.github.io/blob/main/project/src/voxel.js" target="_blank" class="project-link">GitHub Repo</a>
                 </div>
@@ -113,12 +114,43 @@
         <div class="container">
             <h2>Get In Touch</h2>
             <p>I'm always open to new opportunities and collaborations. Feel free to reach out!</p>
-            <form action="https://formspree.io/f/mjkowrza" method="POST">
-                <input type="text" name="name" placeholder="Your Name" required>
-                <input type="email" name="email" placeholder="Your Email" required>
-                <textarea name="message" placeholder="Your Message" rows="6" required></textarea>
-                <button type="submit" class="btn">Send Message</button>
+            <form action="https://formspree.io/f/mjkowrza" method="POST" style="max-width: 500px; margin-left: 0;">
+                <input 
+                    type="text" 
+                    name="name" 
+                    placeholder="Your Name" 
+                    required
+                    style="width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box;
+                        border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; display: block;">
+                
+                <input 
+                    type="email" 
+                    name="email" 
+                    placeholder="Your Email" 
+                    required
+                    style="width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box;
+                        border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; display: block;">
+                
+                <textarea 
+                    name="message" 
+                    placeholder="Your Message" 
+                    rows="6" 
+                    required
+                    style="width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box;
+                        border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;
+                        display: block; vertical-align: top; resize: vertical;">
+                </textarea>
+                
+                <button 
+                    type="submit" 
+                    class="btn"
+                    style="padding: 10px 20px; font-size: 1rem; border: none; border-radius: 4px; 
+                        background-color: #333; color: white; cursor: pointer;">
+                    Send Message
+                </button>
             </form>
+            
+            <p></p>
             <div class="social-links">
                 <a href="https://linkedin.com/in/yourprofile" target="_blank">LinkedIn TBD</a>
                 <a href="https://github.com/eg2298" target="_blank">GitHub</a>
