@@ -45,32 +45,33 @@ void main() {
 
     if (bounds.x > bounds.y) discard;
     bounds.x = max(bounds.x, 0.0);
+
+	vec3 rayDirVox = rayDir / voxelSize;
+	vec3 dirAbs = max(abs(rayDirVox), vec3(1e-6));
+
     // Initial position in voxel coordinates 
     vec3 p0 = (vOrigin + bounds.x * rayDir)/voxelSize;
 
-    vec3 p0abs = sign(rayDir) * p0;
-    if(rayDir.x<0.0){p0abs.x += 1.0 / voxelSize.x;}
-    if(rayDir.y<0.0){p0abs.y += 1.0 / voxelSize.y;}
-    if(rayDir.z<0.0){p0abs.z += 1.0 / voxelSize.z;}
+    vec3 p0abs = sign(rayDirVox) * p0;
+    if(rayDirVox.x<0.0) p0abs.x += 1.0;
+    if(rayDirVox.y<0.0) p0abs.y += 1.0;
+    if(rayDirVox.z<0.0) p0abs.z += 1.0;
 
     color.a= 1.0;
-
-    vec3 dirAbs = abs(rayDir);            
+          
     float t = 0.0;
-        
-    bounds.x/=voxelSize.x;
-    bounds.y/=voxelSize.x;
+	float maxT = bounds.y - bounds.x;
 
-    while(t<bounds.y){
+    while(t < maxT){
         // Current position and density sampling        
-        vec3 texCoord = clamp( (p0 + t * rayDir + 0.5) * voxelSize + 0.5 , 0.0, 1.0);
+        vec3 texCoord = clamp( (p0 + t * rayDirVox + 0.5) * voxelSize + 0.5 , 0.0, 1.0);
         float density = densityAt(texCoord);
 
         if (density > 0.05) {
             vec3 lightColor = vec3(1.0, 0.9, 0.8);
             vec3 ambientColor = vec3(0.3);
-            vec3 stepColor = ambientColor + 0.7 * (1.0-t * voxelSize.x) * lightColor;
-            color.rgb = stepColor;
+            vec3 stepColor = ambientColor + 0.7 * (1.0-t * t / maxT) * lightColor;
+            color = vec4(stepColor, 1.0);
             break;
         }
       vec3 pAbs = p0abs + dirAbs * t;
@@ -78,6 +79,6 @@ void main() {
       t += max(eps, vecmin(deltas));
     }
 
-    if (color.a == 0.0) discard;
+    if (t >= maxT) discard;
 }
 `;
