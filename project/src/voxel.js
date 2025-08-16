@@ -83,13 +83,12 @@ function createStripes3DTexture(size = 32) {
   const sizez = size + 16;
   const sizey = size + 32;
   const data = new Uint8Array(size * sizey * sizez);
-  for (let z = 0; z < sizez; z++) {
-    for (let y = 0; y < sizey; y++) {
-      for (let x = 0; x < size; x++) {
+  for (let z = 1; z < sizez-1; z++) {
+    for (let y = 1; y < sizey-1; y++) {
+      for (let x = 1; x < size-1; x++) {
         const index = x + y * size + z * size * sizey;
-        const stripeWidth = 4;
-        const stripe = ((x % (2 * stripeWidth)) < stripeWidth) ? 255 : 0;
-        data[index] = stripe;
+        data[index] = 255;
+        
       }
     }
   }
@@ -156,7 +155,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 2;
 
-const startTexture = createStripes3DTexture(32);
+const startTexture = createStripes3DTexture(100);
 const startSize = startTexture.userData.size;
 const maxDim = Math.max(startSize[0], startSize[1], startSize[2]);
 cloudMaterial = new THREE.RawShaderMaterial({

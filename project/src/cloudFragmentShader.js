@@ -58,7 +58,7 @@ void main() {
     if (bounds.x > bounds.y) discard;
     bounds.x = max(bounds.x, 0.0);
 
-	vec3 dirAbs = max(abs(rayDir), vec3(1e-6));
+  	vec3 dirAbs = abs(rayDir);
 
     // Initial position in voxel coordinates 
     vec3 p0 = (O + bounds.x * rayDir)/voxelSize;
@@ -78,7 +78,7 @@ void main() {
     int minAxis = int(bounds.z);
     while(t <= maxT){
         // Current position and density sampling        
-        vec3 texCoord = clamp( (p0 + (t +0.0001) * rayDir) / gridSize, 0.0, 1.0);
+        vec3 texCoord = clamp( (p0 + (t +0.001) * rayDir) / gridSize, 0.0, 1.0);
         float density = densityAt(texCoord);
 
         if (density > 0.05) {
@@ -107,7 +107,17 @@ void main() {
             break;
         }
       vec3 pAbs = p0abs + dirAbs * t;
-      vec3 deltas = (1.0-fract(pAbs)) / dirAbs;
+      vec3 fr =  (1.0-fract(pAbs));
+      vec3 deltas = vec3(2.0 * maxT);
+      if(dirAbs.x>0.0){
+        deltas.x = fr.x/dirAbs.x;
+      }
+      if(dirAbs.y>0.0){
+        deltas.y = fr.y/dirAbs.y;
+      }
+      if(dirAbs.z>0.0){
+        deltas.z = fr.z/dirAbs.z;
+      }
       minAxis = 0;
       if(deltas.y < deltas.x){
         minAxis = 1;
