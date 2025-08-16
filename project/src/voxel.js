@@ -96,13 +96,38 @@ function createStripes3DTexture(size = 32) {
   const texture = new THREE.Data3DTexture(data, size, sizey, sizez);
   texture.format = THREE.RedFormat;
   texture.type = THREE.UnsignedByteType;
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.NearestFilter;
   texture.unpackAlignment = 1;
   texture.needsUpdate = true;
   texture.userData.size = [size , sizey, sizez];
   return texture;
 }
+
+function createMinimal3DTexture() {
+  const size = 4;
+  const sizey = 6;
+  const sizez = 8;
+  const data = new Uint8Array(size * sizey * sizez);
+  data[29] = 255;
+  data[30] = 255;
+  data[33] = 255;
+  data[34] = 255;
+  data[53] = 255;
+  data[54] = 255;
+  data[57] = 255;
+  data[58] = 255;
+  const texture = new THREE.Data3DTexture(data, size, sizey, sizez);
+  texture.format = THREE.RedFormat;
+  texture.type = THREE.UnsignedByteType;
+  texture.minFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.NearestFilter;
+  texture.unpackAlignment = 1;
+  texture.needsUpdate = true;
+  texture.userData.size = [size, sizey, sizez];
+  return texture;
+}
+
 
 let rotationSpeed = 0.01;
 
@@ -131,18 +156,18 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 2;
 
-const stripesTexture = createStripes3DTexture(32);
-
-const maxDim = Math.max(stripesTexture.userData.size[0], stripesTexture.userData.size[1], stripesTexture.userData.size[2]);
+const startTexture = createStripes3DTexture(32);
+const startSize = startTexture.userData.size;
+const maxDim = Math.max(startSize[0], startSize[1], startSize[2]);
 cloudMaterial = new THREE.RawShaderMaterial({
   glslVersion: THREE.GLSL3,
   uniforms: {
-    map: { value: stripesTexture },
+    map: { value: startTexture },
     vOrigin: { value: new THREE.Vector3() },
     steps: { value: 100 },
     // NEW: Initialize voxelGridSize uniform here
     voxelSize: { value: 1.0/maxDim}, // Default to stripes texture size,
-    gridSize: {value: new THREE.Vector3(stripesTexture.userData.size[0],stripesTexture.userData.size[1],stripesTexture.userData.size[2])}
+    gridSize: {value: new THREE.Vector3(startSize[0],startSize[1],startSize[2])}
   },
   vertexShader: cloudVertexShader,
   fragmentShader: cloudFragmentShader,
@@ -150,9 +175,9 @@ cloudMaterial = new THREE.RawShaderMaterial({
 });
 
 cube = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), cloudMaterial);
-cube.scale.x= stripesTexture.userData.size[0]/maxDim;
-cube.scale.y= stripesTexture.userData.size[1]/maxDim;
-cube.scale.z= stripesTexture.userData.size[2]/maxDim;
+cube.scale.x= startSize[0]/maxDim;
+cube.scale.y= startSize[1]/maxDim;
+cube.scale.z= startSize[2]/maxDim;
 scene.add(cube);
 
 // Controls
