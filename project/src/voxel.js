@@ -3,6 +3,21 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { cloudVertexShader } from './cloudVertexShader.js';
 import { cloudFragmentShader } from './cloudFragmentShader.js';
 import { ParseVol } from "./ParseVol.js";
+import { Pane } from 'tweakpane';
+
+const PARAMS = {
+  rotationSpeed: 0.01,      // controls cube rotation
+  title: 'No file loaded',  // displays filename
+  factor: 123,
+  color: '#ff0055',
+};
+
+const pane = new Pane();
+pane.addBinding(PARAMS, 'rotationSpeed', { min: 0, max: 0.2, step: 0.01 });
+pane.addBinding(PARAMS, 'title');
+pane.addBinding(PARAMS, 'factor');
+pane.addBinding(PARAMS, 'color');
+
 
 // Vertex shader for fullscreen quad
 const quadVertexShader = `
@@ -31,6 +46,11 @@ let cube; // moved here so LoadVol can access it
 
 const LoadVol = (event) => {
   const file = event.target.files[0];
+  if (!file) return;
+
+  PARAMS.title = file.name;
+  pane.refresh();
+  
   const reader = new FileReader();
   reader.onload = (e) => {
     const arrayBuffer = e.target.result;
@@ -128,7 +148,6 @@ function createMinimal3DTexture() {
 }
 
 
-let rotationSpeed = 0.01;
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
