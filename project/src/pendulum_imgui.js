@@ -116,10 +116,90 @@ function init() {
 
     if (mass1ValueSpan) mass1ValueSpan.textContent = `${mass1Slider.value} kg`;
     if (mass2ValueSpan) mass2ValueSpan.textContent = `${mass2Slider.value} kg`;
+
+}
+  
+
+async function LoadArrayBuffer(url) {
+    const response = await fetch(url);
+    return response.arrayBuffer();
 }
 
-function animate() {
+async function AddFontFromFileTTF(url, size_pixels, font_cfg = null, glyph_ranges = null) {
+    font_cfg = font_cfg || new ImGui.FontConfig();
+    font_cfg.Name = font_cfg.Name || `${url.split(/[\\\/]/).pop()}, ${size_pixels.toFixed(0)}px`;
+    return ImGui.GetIO().Fonts.AddFontFromMemoryTTF(await LoadArrayBuffer(url), size_pixels, font_cfg, glyph_ranges);
+}
+
+await ImGui.default();
+const canvas = document.getElementById('three-canvas');
+ImGui.CreateContext();
+const io = ImGui.GetIO();
+ImGui_Impl.Init(canvas);
+io.Fonts.AddFontDefault();
+const font = await AddFontFromFileTTF("./CourierPrime-Regular.ttf", 16.0);
+if (font) { io.Fonts.Build(); }
+ImGui.StyleColorsDark();
+
+
+function drawImGUI(time) {
+    if(!(ImGui && ImGui_Impl)){
+      return;
+    }
+    ImGui_Impl.NewFrame(time);
+    ImGui.NewFrame();
+    if (font) {
+        ImGui.PushFont(font);
+    }
+    ImGui.SetNextWindowPos(new ImGui.ImVec2(20, 20), ImGui.Cond.FirstUseEver);
+    ImGui.SetNextWindowSize(new ImGui.ImVec2(294, 140), ImGui.Cond.FirstUseEver);
+    ImGui.Begin("Debug");
+
+    ImGui.ColorEdit4("clear color", clear_color);
+    ImGui.Separator();
+    ImGui.Text(`Scene: ${scene.uuid.toString()}`);
+    ImGui.Separator();
+    ImGui.Text(`Material: ${material.uuid.toString()}`);
+    ImGui.ColorEdit3("color", material.color);
+    const side_enums = [THREE.FrontSide, THREE.BackSide, THREE.DoubleSide];
+    const side_names = {};
+    side_names[THREE.FrontSide] = "FrontSide";
+    side_names[THREE.BackSide] = "BackSide";
+    side_names[THREE.DoubleSide] = "DoubleSide"
+    if (ImGui.BeginCombo("side", side_names[material.side])) {
+        side_enums.forEach((side) => {
+            const is_selected = (material.side === side);
+            if (ImGui.Selectable(side_names[side], is_selected)) {
+                material.side = side;
+            }
+            if (is_selected) {
+                ImGui.SetItemDefaultFocus();
+            }
+        });
+        ImGui.EndCombo();
+    }
+    ImGui.Separator();
+    ImGui.Text(`Mesh: ${mesh.uuid.toString()}`);
+    ImGui.Checkbox("visible", (value = mesh.visible) => mesh.visible = value);
+    ImGui.InputText("name", (value = mesh.name) => mesh.name = value);
+    ImGui.SliderFloat3("position", mesh.position, -100, 100);
+    ImGui.SliderFloat3("rotation", mesh.rotation, -360, 360);
+    ImGui.SliderFloat3("scale", mesh.scale, -2, 2);
+
+    ImGui.End();
+
+    ImGui.EndFrame();
+
+    ImGui.Render();
+
+}
+
+function animate(time ) {
+
     requestAnimationFrame(animate);
+
+    drawImGUI(time);
+
 
     // Physics
     const num1 = -g * (2 * m1 + m2) * Math.sin(angle1);
