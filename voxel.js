@@ -1,4 +1,4 @@
-import"./modulepreload-polyfill-.js";import{W as Ei,S as mn,O as ki,M as bn,P as Vi,a as Si,b as Ai,R as Li,V as Ue,G as Mi,B as Di,c as Oi,D as fn,d as _n,U as wn,N as Ut}from"./OrbitControls-.js";const Bi=`
+import"./modulepreload-polyfill.js";import{W as Ei,S as mn,O as ki,M as bn,P as Vi,a as Si,b as Ai,R as Li,V as Ue,G as Mi,B as Di,c as Oi,D as fn,d as _n,U as wn,N as Ut}from"./OrbitControls.js";const Bi=`
 					in vec3 position;
 					uniform mat4 modelMatrix;			
 					uniform mat4 modelViewMatrix;

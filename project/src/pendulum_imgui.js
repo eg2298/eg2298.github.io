@@ -18,6 +18,16 @@ let m2 = 1;
 const l1 = 1;
 const l2 = 1;
 
+
+const initialState = {
+    angle1: Math.PI / 2, 
+    angle2: Math.PI / 4,
+    vel1: 0.5,
+    vel2: 0.5,
+    m1: 1,
+    m2: 1
+};
+
 let trailPoints = [];
 let trailLine;
 const maxTrailPoints = 750;
@@ -82,7 +92,7 @@ async function init() {
     ImGui.CreateContext();
     const io = ImGui.GetIO();    
     io.Fonts.AddFontDefault();    
-    font = await AddFontFromFileTTF("./CourierPrime-Regular.ttf", 16.0);
+    font = await AddFontFromFileTTF("./assets/CourierPrime-Regular.ttf", 16.0);
     if (font) { io.Fonts.Build(); }
     ImGui.StyleColorsDark();
     ImGui_Impl.Init(canvas);
@@ -91,6 +101,8 @@ async function init() {
     window.addEventListener('resize', onWindowResize);
 
 }
+
+let isPaused = false;
 
 function drawImGUI(time) {
     if (ImGui.GetCurrentContext() === null) {
@@ -110,7 +122,7 @@ function drawImGUI(time) {
     
     ImGui.SetNextWindowPos(new ImGui.ImVec2(20, 20), ImGui.Cond.FirstUseEver);
     ImGui.SetNextWindowSize(new ImGui.ImVec2(294, 140), ImGui.Cond.FirstUseEver);
-    ImGui.Begin("Debug");
+    ImGui.Begin("Double Pendulum UI");
 
     ImGui.ColorEdit4("clear color", clear_color);
     ImGui.Separator();
@@ -119,9 +131,54 @@ function drawImGUI(time) {
     ImGui.Text(`Material: ${material1.uuid.toString()}`);
     ImGui.ColorEdit3("color", material1.color);
 
+    ImGui.Separator();
+    ImGui.Text(`Angular Velocity 1: ${vel1.toFixed(3)} rad/s`);
+    ImGui.Text(`Angular Velocity 2: ${vel2.toFixed(3)} rad/s`);
+
+    ImGui.Separator();
+    const vel1Ref = [vel1];
+    const vel2Ref = [vel2];
+    if (ImGui.SliderFloat("Velocity 1", vel1Ref, -10.0, 10.0)) {
+        vel1 = vel1Ref[0];
+    }
+    if (ImGui.SliderFloat("Velocity 2", vel2Ref, -10.0, 10.0)) {
+        vel2 = vel2Ref[0];
+    }
+
+
+    ImGui.Separator();
+    const mass1Ref = [m1];
+    const mass2Ref = [m2];
+    if (ImGui.SliderFloat("Mass 1", mass1Ref, 0.5, 5.0)) {
+        m1 = mass1Ref[0];
+    }
+    if (ImGui.SliderFloat("Mass 2", mass2Ref, 0.5, 5.0)) {
+        m2 = mass2Ref[0];
+    }
+
+    if (ImGui.Button("Reset Pendulum")) {
+        angle1 = initialState.angle1;
+        angle2 = initialState.angle2;
+        vel1   = initialState.vel1;
+        vel2   = initialState.vel2;
+        m1     = initialState.m1;
+        m2     = initialState.m2;
+            
+        
+        
+        trailPoints = [];
+        if (trailLine && trailLine.geometry && trailLine.geometry.attributes.position) {
+            trailLine.geometry.attributes.position.array.fill(0);
+            trailLine.geometry.attributes.position.needsUpdate = true;
+            trailLine.geometry.setDrawRange(0, 0);
+        }
+    }
+
     if(pushedFont){
         ImGui.PopFont();
+
     }
+    
     ImGui.End();
 
     ImGui.EndFrame();
@@ -168,7 +225,7 @@ function animate(time ) {
     arm2.rotation.z = angle2 - angle1;
 
     // Update color from screen Y
-    updateColor(arm1, material1);
+    //updateColor(arm1, material1);
     updateColor(arm2, material2);
 
     // Trail
