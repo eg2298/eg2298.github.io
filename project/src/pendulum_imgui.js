@@ -23,59 +23,24 @@ let trailLine;
 const maxTrailPoints = 750;
 const trailUpdateInterval = 1;
 let frameCount = 0;
-
-// Velocity displays
-const vel1Display = document.getElementById('vel1-display');
-const vel2Display = document.getElementById('vel2-display');
-
-// Reset button
-document.getElementById('reset-btn').addEventListener('click', () => {
-    angle1 = Math.PI / 2;
-    angle2 = Math.PI / 4;
-    vel1 = 0.5;
-    vel2 = 2.5;
-    acc1 = 0;
-    acc2 = 0;
-    trailPoints = [];
-
-    if (trailLine && trailLine.geometry && trailLine.geometry.attributes.position) {
-        trailLine.geometry.attributes.position.array.fill(0);
-        trailLine.geometry.attributes.position.needsUpdate = true;
-        trailLine.geometry.setDrawRange(0, 0);
-    }
-});
-
-// Set velocities
-document.getElementById('apply-velocities').addEventListener('click', () => {
-    const v1 = parseFloat(document.getElementById('vel1-input').value);
-    const v2 = parseFloat(document.getElementById('vel2-input').value);
-    if (!isNaN(v1)) vel1 = v1;
-    if (!isNaN(v2)) vel2 = v2;
-});
-
-// Mass sliders
-const mass1Slider = document.getElementById('mass1');
-const mass2Slider = document.getElementById('mass2');
-const mass1ValueSpan = document.getElementById('mass1-value');
-const mass2ValueSpan = document.getElementById('mass2-value');
-
-if (mass1Slider) {
-    mass1Slider.addEventListener('input', (e) => {
-        m1 = parseFloat(e.target.value);
-        if (mass1ValueSpan) mass1ValueSpan.textContent = `${m1} kg`;
-    });
-}
-if (mass2Slider) {
-    mass2Slider.addEventListener('input', (e) => {
-        m2 = parseFloat(e.target.value);
-        if (mass2ValueSpan) mass2ValueSpan.textContent = `${m2} kg`;
-    });
-}
-
-init();
+let font = null;
+let clear_color = null;
+let mouseOverImgui = false;
+await init();
 animate();
 
-function init() {
+async function LoadArrayBuffer(url) {
+    const response = await fetch(url);
+    return response.arrayBuffer();
+}
+
+async function AddFontFromFileTTF(url, size_pixels, font_cfg = null, glyph_ranges = null) {
+    font_cfg = font_cfg || new ImGui.FontConfig();
+    font_cfg.Name = font_cfg.Name || `${url.split(/[\\\/]/).pop()}, ${size_pixels.toFixed(0)}px`;
+    return ImGui.GetIO().Fonts.AddFontFromMemoryTTF(await LoadArrayBuffer(url), size_pixels, font_cfg, glyph_ranges);
+}
+async function init() {
+    
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a1a2e);
 
@@ -111,46 +76,38 @@ function init() {
     const trailMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 });
     trailLine = new THREE.Line(trailGeometry, trailMaterial);
     scene.add(trailLine);
+        
+    await ImGui.default();
+    const canvas = document.getElementById('three-canvas');
+    ImGui.CreateContext();
+    const io = ImGui.GetIO();    
+    io.Fonts.AddFontDefault();    
+    font = await AddFontFromFileTTF("./CourierPrime-Regular.ttf", 16.0);
+    if (font) { io.Fonts.Build(); }
+    ImGui.StyleColorsDark();
+    ImGui_Impl.Init(canvas);
+    clear_color = new ImGui.ImVec4(0.3, 0.3, 0.3, 1.00);
 
     window.addEventListener('resize', onWindowResize);
 
-    if (mass1ValueSpan) mass1ValueSpan.textContent = `${mass1Slider.value} kg`;
-    if (mass2ValueSpan) mass2ValueSpan.textContent = `${mass2Slider.value} kg`;
-
 }
-  
-
-async function LoadArrayBuffer(url) {
-    const response = await fetch(url);
-    return response.arrayBuffer();
-}
-
-async function AddFontFromFileTTF(url, size_pixels, font_cfg = null, glyph_ranges = null) {
-    font_cfg = font_cfg || new ImGui.FontConfig();
-    font_cfg.Name = font_cfg.Name || `${url.split(/[\\\/]/).pop()}, ${size_pixels.toFixed(0)}px`;
-    return ImGui.GetIO().Fonts.AddFontFromMemoryTTF(await LoadArrayBuffer(url), size_pixels, font_cfg, glyph_ranges);
-}
-
-await ImGui.default();
-const canvas = document.getElementById('three-canvas');
-ImGui.CreateContext();
-const io = ImGui.GetIO();
-ImGui_Impl.Init(canvas);
-io.Fonts.AddFontDefault();
-const font = await AddFontFromFileTTF("./CourierPrime-Regular.ttf", 16.0);
-if (font) { io.Fonts.Build(); }
-ImGui.StyleColorsDark();
-
 
 function drawImGUI(time) {
-    if(!(ImGui && ImGui_Impl)){
-      return;
+    if (ImGui.GetCurrentContext() === null) {
+        //be patient
+        return;
     }
     ImGui_Impl.NewFrame(time);
     ImGui.NewFrame();
+    let pushedFont = false;
     if (font) {
         ImGui.PushFont(font);
+        pushedFont = true;
     }
+
+    // so that we can disable orbit control if needed.
+    mouseOverImgui= ImGui.IsWindowHovered(ImGui.ImGuiHoveredFlags["AnyWindow"]);
+    
     ImGui.SetNextWindowPos(new ImGui.ImVec2(20, 20), ImGui.Cond.FirstUseEver);
     ImGui.SetNextWindowSize(new ImGui.ImVec2(294, 140), ImGui.Cond.FirstUseEver);
     ImGui.Begin("Debug");
@@ -159,39 +116,16 @@ function drawImGUI(time) {
     ImGui.Separator();
     ImGui.Text(`Scene: ${scene.uuid.toString()}`);
     ImGui.Separator();
-    ImGui.Text(`Material: ${material.uuid.toString()}`);
-    ImGui.ColorEdit3("color", material.color);
-    const side_enums = [THREE.FrontSide, THREE.BackSide, THREE.DoubleSide];
-    const side_names = {};
-    side_names[THREE.FrontSide] = "FrontSide";
-    side_names[THREE.BackSide] = "BackSide";
-    side_names[THREE.DoubleSide] = "DoubleSide"
-    if (ImGui.BeginCombo("side", side_names[material.side])) {
-        side_enums.forEach((side) => {
-            const is_selected = (material.side === side);
-            if (ImGui.Selectable(side_names[side], is_selected)) {
-                material.side = side;
-            }
-            if (is_selected) {
-                ImGui.SetItemDefaultFocus();
-            }
-        });
-        ImGui.EndCombo();
-    }
-    ImGui.Separator();
-    ImGui.Text(`Mesh: ${mesh.uuid.toString()}`);
-    ImGui.Checkbox("visible", (value = mesh.visible) => mesh.visible = value);
-    ImGui.InputText("name", (value = mesh.name) => mesh.name = value);
-    ImGui.SliderFloat3("position", mesh.position, -100, 100);
-    ImGui.SliderFloat3("rotation", mesh.rotation, -360, 360);
-    ImGui.SliderFloat3("scale", mesh.scale, -2, 2);
+    ImGui.Text(`Material: ${material1.uuid.toString()}`);
+    ImGui.ColorEdit3("color", material1.color);
 
+    if(pushedFont){
+        ImGui.PopFont();
+    }
     ImGui.End();
 
     ImGui.EndFrame();
-
     ImGui.Render();
-
 }
 
 function animate(time ) {
@@ -199,7 +133,6 @@ function animate(time ) {
     requestAnimationFrame(animate);
 
     drawImGUI(time);
-
 
     // Physics
     const num1 = -g * (2 * m1 + m2) * Math.sin(angle1);
@@ -238,10 +171,6 @@ function animate(time ) {
     updateColor(arm1, material1);
     updateColor(arm2, material2);
 
-    // Update velocity UI
-    if (vel1Display) vel1Display.textContent = vel1.toFixed(2);
-    if (vel2Display) vel2Display.textContent = vel2.toFixed(2);
-
     // Trail
     frameCount++;
     if (frameCount % trailUpdateInterval === 0) {
@@ -260,8 +189,19 @@ function animate(time ) {
         trailLine.geometry.setDrawRange(0, trailPoints.length);
     }
 
+    // right now, orbit control enable solely depends on if mouse is over imgui.
+    if(mouseOverImgui){
+        controls.enabled = false;
+    }else{
+        controls.enabled = true;
+    }
     controls.update();
     renderer.render(scene, camera);
+    if (ImGui.GetCurrentContext() != null && ImGui.GetDrawData()!=null) {
+        ImGui_Impl.RenderDrawData(ImGui.GetDrawData());
+        // TODO: restore WebGL state in ImGui Impl
+        renderer.state.reset();
+    }
 }
 
 function updateColor(mesh, material) {

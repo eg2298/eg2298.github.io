@@ -5,83 +5,10 @@
   <title>Double Pendulum</title>
   <script src="./src/imgui.umd.js"></script>
   <script src="./src/imgui_impl.umd.js"></script>
-  <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background: #0d0d1a;
-      color: #fff;
-      overflow: hidden;
-    }
-    #ui {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      padding: 12px;
-      background: rgba(0,0,0,0.6);
-      border-radius: 8px;
-    }
-    .control {
-      margin-bottom: 10px;
-    }
-    label {
-      display: block;
-      margin-bottom: 4px;
-    }
-    input[type="range"] {
-      width: 150px;
-    }
-    button {
-      margin-top: 6px;
-      padding: 6px 12px;
-      border: none;
-      border-radius: 4px;
-      background: #444;
-      color: #fff;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #666;
-    }
-    .velocity-display {
-      margin-top: 6px;
-      font-size: 14px;
-    }
-  </style>
+
 </head>
 <body>
   <canvas id="three-canvas"></canvas>
-
-  <div id="ui">
-    <div class="control">
-      <label for="mass1">Mass 1: <span id="mass1-value"></span></label>
-      <input type="range" id="mass1" min="0.5" max="5" step="0.1" value="1">
-    </div>
-
-    <div class="control">
-      <label for="mass2">Mass 2: <span id="mass2-value"></span></label>
-      <input type="range" id="mass2" min="0.5" max="5" step="0.1" value="1">
-    </div>
-
-    <div class="control">
-      <label for="vel1-input">Initial Velocity 1</label>
-      <input type="number" id="vel1-input" step="0.1" value="0.5">
-
-      <label for="vel2-input">Initial Velocity 2</label>
-      <input type="number" id="vel2-input" step="0.1" value="2.5">
-      <br>
-      <button id="apply-velocities">Apply Velocities</button>
-    </div>
-
-    <div class="control">
-      <button id="reset-btn">Reset</button>
-    </div>
-
-    <div class="velocity-display">
-      <div>Velocity 1: <span id="vel1-display">0.00</span></div>
-      <div>Velocity 2: <span id="vel2-display">0.00</span></div>
-    </div>
-  </div>
 
   <script type="module" src="./src/pendulum_imgui.js"></script>
 </body>
