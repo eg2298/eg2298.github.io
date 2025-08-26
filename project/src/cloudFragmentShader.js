@@ -10,6 +10,8 @@ uniform vec3 gridSize;
 //cubic voxel only.
 uniform float voxelSize;
 uniform vec3 vOrigin;
+uniform mat3 rotationMatrix;
+
 
 //box_min = 0.
 vec3 hitBox(vec3 orig, vec3 dir, vec3 box_max) {    
@@ -78,8 +80,12 @@ void main() {
     int minAxis = int(bounds.z);
     while(t <= maxT){
         // Current position and density sampling        
-        vec3 texCoord = clamp( (p0 + (t +0.001) * rayDir) / gridSize, 0.0, 1.0);
+        // Apply rotation to the local voxel coordinates
+        vec3 localPos = (p0 + (t + 0.001) * rayDir);       // in voxel units
+        vec3 rotatedPos = rotationMatrix * (localPos / gridSize); // normalize and rotate
+        vec3 texCoord = clamp(rotatedPos, 0.0, 1.0);       // use as texture coords
         float density = densityAt(texCoord);
+
 
         if (density > 0.05) {
             vec3 normal = vec3(-1.0, 0.0, 0.0);

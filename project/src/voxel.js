@@ -7,9 +7,11 @@ import { Pane } from 'tweakpane';
 
 const PARAMS = {
   title: 'No file loaded',  // displays filename
-  rotationSpeed: 0.01,      // controls cube rotation
-  factor: 20,
+  factor: 90,
   color: '#1c1f24ff',
+  rotationX: 0,
+  rotationY: 0,
+  rotationZ: 0
 };
 
 const pane = new Pane();
@@ -18,7 +20,7 @@ paneElement.style.transition = 'background-color 0.3s';
 pane.addBinding(PARAMS, 'title', {
   label: 'Title',
 });
-pane.addBinding(PARAMS, 'rotationSpeed', { min: 0, max: 0.2, step: 0.01 });
+
 pane.addBinding(PARAMS, 'factor', {
   min: 0,
   max: 100,
@@ -28,6 +30,14 @@ pane.addBinding(PARAMS, 'factor', {
 pane.addBinding(PARAMS, 'color', {label: 'Color'}).on('change', (ev) => {
     paneElement.style.backgroundColor = ev.value;
 });
+
+pane.addFolder({ title: 'Rotation' })
+  .addBinding(PARAMS, 'rotationX', { min: 0, max: 360, step: 1, label: 'X' });
+pane.addFolder({ title: 'Rotation' })
+  .addBinding(PARAMS, 'rotationY', { min: 0, max: 360, step: 1, label: 'Y' });
+pane.addFolder({ title: 'Rotation' })
+  .addBinding(PARAMS, 'rotationZ', { min: 0, max: 360, step: 1, label: 'Z' });
+
 pane.addButton({ title: 'Load File' }).on('click', () => {
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
@@ -68,6 +78,10 @@ pane.addButton({ title: 'Load File' }).on('click', () => {
 
         // scale cube
         cube.scale.set(voxelData.x / maxDim, voxelData.y / maxDim, voxelData.z / maxDim);
+        PARAMS.rotationX = 0;
+        PARAMS.rotationY = 0;
+        PARAMS.rotationZ = 0;
+        pane.refresh();
       };
 
     reader.readAsArrayBuffer(file);
@@ -79,17 +93,18 @@ pane.addButton({ title: 'Load File' }).on('click', () => {
 
 
 pane.addButton({ title: 'Reset View' }).on('click', () => {
-  // Reset cube rotation
-  cube.rotation.set(0, 0, 0);
+
+  PARAMS.rotationX = 0;
+  PARAMS.rotationY = 0;
+  PARAMS.rotationZ = 0;
+
 
   // Reset camera zoom / factor
-  PARAMS.factor = 20; // or whatever your default zoom factor is
+  PARAMS.factor = 90; // or whatever your default zoom factor is
   camera.position.z = 8 - (PARAMS.factor / 25);
   controls.target.set(0, 0, 0);
   controls.update();
 
-  // Reset rotation speed
-  PARAMS.rotationSpeed = 0.01;
 
   // Reset title
   PARAMS.title = 'No file loaded';
@@ -190,7 +205,6 @@ const LoadVol = (event) => {
   reader.readAsArrayBuffer(file);
 };
 
-document.getElementById('binaryFileInput').addEventListener('change', LoadVol);
 
 // Create default stripes texture
 function createStripes3DTexture(size = 32) {
@@ -279,7 +293,9 @@ cloudMaterial = new THREE.RawShaderMaterial({
     steps: { value: 100 },
     // NEW: Initialize voxelGridSize uniform here
     voxelSize: { value: 1.0/maxDim}, // Default to stripes texture size,
-    gridSize: {value: new THREE.Vector3(startSize[0],startSize[1],startSize[2])}
+    gridSize: {value: new THREE.Vector3(startSize[0],startSize[1],startSize[2])},
+    rotationMatrix: { value: new THREE.Matrix3() }
+
   },
   vertexShader: cloudVertexShader,
   fragmentShader: cloudFragmentShader,
@@ -296,30 +312,25 @@ scene.add(cube);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-document.getElementById('speedSlider').addEventListener('input', (e) => {
-  rotationSpeed = parseFloat(e.target.value);
-});
 
-document.getElementById('resetBtn').addEventListener('click', () => {
-  cube.rotation.set(0, 0, 0);
-  camera.position.set(0, 0, 5);
-  controls.target.set(0, 0, 0);
-  controls.update();
-  rotationSpeed = 0.01;
-  document.getElementById('speedSlider').value = rotationSpeed;
-});
 
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-});
 
 // Loop
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+
+  // Convert Euler angles from sliders into a rotation matrix
+  const rotX = new THREE.Matrix4().makeRotationX(THREE.MathUtils.degToRad(PARAMS.rotationX));
+  const rotY = new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(PARAMS.rotationY));
+  const rotZ = new THREE.Matrix4().makeRotationZ(THREE.MathUtils.degToRad(PARAMS.rotationZ));
+
+  const rotationMatrix = new THREE.Matrix3();
+  rotationMatrix.setFromMatrix4(rotX.multiply(rotY).multiply(rotZ));
+
+  // Update shader uniform
+  cloudMaterial.uniforms.rotationMatrix.value.copy(rotationMatrix);
+
   const minZoom = 1;   // closest
   const maxZoom = 12;  // farthest
 
