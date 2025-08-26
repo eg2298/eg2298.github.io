@@ -6,17 +6,111 @@ import { ParseVol } from "./ParseVol.js";
 import { Pane } from 'tweakpane';
 
 const PARAMS = {
-  rotationSpeed: 0.01,      // controls cube rotation
   title: 'No file loaded',  // displays filename
-  factor: 123,
-  color: '#ff0055',
+  rotationSpeed: 0.01,      // controls cube rotation
+  factor: 20,
+  color: '#1c1f24ff',
 };
 
 const pane = new Pane();
+const paneElement = pane.element; // the root DOM element of the pane
+paneElement.style.transition = 'background-color 0.3s'; 
+pane.addBinding(PARAMS, 'title', {
+  label: 'Title',
+});
 pane.addBinding(PARAMS, 'rotationSpeed', { min: 0, max: 0.2, step: 0.01 });
-pane.addBinding(PARAMS, 'title');
-pane.addBinding(PARAMS, 'factor');
-pane.addBinding(PARAMS, 'color');
+pane.addBinding(PARAMS, 'factor', {
+  min: 0,
+  max: 100,
+  step: 1,
+  label: 'Zoom',
+});
+pane.addBinding(PARAMS, 'color', {label: 'Color'}).on('change', (ev) => {
+    paneElement.style.backgroundColor = ev.value;
+});
+pane.addButton({ title: 'Load File' }).on('click', () => {
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.vol,.raw';
+  fileInput.onchange = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;    
+      PARAMS.title = file.name;
+      pane.refresh();
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const arrayBuffer = e.target.result;
+        voxelData = ParseVol(arrayBuffer);
+
+        // create texture
+        voxelTexture = new THREE.Data3DTexture(
+          voxelData.voxels,
+          voxelData.x,
+          voxelData.y,
+          voxelData.z
+        );
+        voxelTexture.format = THREE.RedFormat;
+        voxelTexture.type = THREE.UnsignedByteType;
+        voxelTexture.minFilter = THREE.NearestFilter;
+        voxelTexture.magFilter = THREE.NearestFilter;
+        voxelTexture.unpackAlignment = 1;
+        voxelTexture.needsUpdate = true;
+
+        const maxDim = Math.max(voxelData.x, voxelData.y, voxelData.z);
+
+        // update shader
+        cloudMaterial.uniforms.map.value = voxelTexture;
+        cloudMaterial.uniforms.gridSize.value.set(voxelData.x, voxelData.y, voxelData.z);
+        cloudMaterial.uniforms.voxelSize.value = 1.0 / maxDim;
+        cloudMaterial.uniformsNeedUpdate = true;
+        cloudMaterial.needsUpdate = true;
+
+        // scale cube
+        cube.scale.set(voxelData.x / maxDim, voxelData.y / maxDim, voxelData.z / maxDim);
+      };
+
+    reader.readAsArrayBuffer(file);
+  };
+  fileInput.click();
+});
+
+
+
+
+pane.addButton({ title: 'Reset View' }).on('click', () => {
+  // Reset cube rotation
+  cube.rotation.set(0, 0, 0);
+
+  // Reset camera zoom / factor
+  PARAMS.factor = 20; // or whatever your default zoom factor is
+  camera.position.z = 8 - (PARAMS.factor / 25);
+  controls.target.set(0, 0, 0);
+  controls.update();
+
+  // Reset rotation speed
+  PARAMS.rotationSpeed = 0.01;
+
+  // Reset title
+  PARAMS.title = 'No file loaded';
+
+  // Reset the voxel texture to default stripes
+  const startTexture = createStripes3DTexture(100);
+  const startSize = startTexture.userData.size;
+  const maxDim = Math.max(startSize[0], startSize[1], startSize[2]);
+
+  cloudMaterial.uniforms.map.value = startTexture;
+  cloudMaterial.uniforms.gridSize.value.set(startSize[0], startSize[1], startSize[2]);
+  cloudMaterial.uniforms.voxelSize.value = 1.0 / maxDim;
+  cloudMaterial.uniformsNeedUpdate = true;
+  cloudMaterial.needsUpdate = true;
+
+  cube.scale.set(startSize[0]/maxDim, startSize[1]/maxDim, startSize[2]/maxDim);
+
+  // Refresh Tweakpane UI to reflect updated values
+  pane.refresh();
+});
+
 
 
 // Vertex shader for fullscreen quad
@@ -172,7 +266,7 @@ screenScene.add(quad);
 // Main scene
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 2;
+camera.position.z = 8 - (PARAMS.factor / 25);
 
 const startTexture = createStripes3DTexture(100);
 const startSize = startTexture.userData.size;
@@ -226,6 +320,13 @@ window.addEventListener('resize', () => {
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+  const minZoom = 1;   // closest
+  const maxZoom = 12;  // farthest
+
+  // Use factor instead of zoom
+  const t = PARAMS.factor / 100; 
+  camera.position.z = maxZoom - t * (maxZoom - minZoom);
+
   // Ensure cameraPos is updated every frame, as it's used for vOrigin
   cloudMaterial.uniforms.vOrigin.value.copy(camera.position);
   renderer.autoClear = true;
